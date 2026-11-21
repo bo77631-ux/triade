@@ -8,27 +8,27 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tríade">
-<meta name="theme-color" content="#004225">
+<meta name="theme-color" content="#0e0d0b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* Layout: app de uma coluna para celular, navegação fixa embaixo, cartões sobre fundo escuro; cor só nos dados. */
 :root{
   color-scheme:dark;
-  /* cor oficial: British Racing Green #004225. --brg-l é o mesmo verde clareado, para traços e texto sobre fundo escuro. */
-  --brg:#004225; --brg-d:#002a17; --brg-l:#3f9d72; --brass:#c6a96a;
-  --bg:#090c0a; --surface:#111613; --raised:#1a221d; --line:#27322b;
-  --ink:#ece7da; --ink2:#bab6a6; --mute:#80857a;
-  --accent:#004225; --on-accent:#ece7da;
-  --kcal:#4a90e2; --prot:#d9642e; --carb:#2aa87a; --fat:#cf9a1f;
-  --violet:#9085e9; --magenta:#d55181;
-  --good:#3fae6e; --warn:#cf9a1f; --bad:#e66767;
-  --display:"Antonio","Avenir Next Condensed","Arial Narrow",system-ui,sans-serif;
+  /* cor oficial: British Racing Green #004225, sempre chapado e escuro. Detalhes em latão envelhecido; dados em tons dessaturados. */
+  --brg:#004225; --brass:#b39a62;
+  --bg:#0e0d0b; --surface:#161512; --raised:#211f1a; --line:#322f27;
+  --ink:#ebe4d3; --ink2:#bdb5a2; --mute:#8b8474;
+  --accent:#004225; --on-accent:#ebe4d3;
+  --kcal:#7a93b3; --prot:#a8584a; --carb:#7f9166; --fat:#c2a05a;
+  --violet:#8f86ad; --magenta:#a9647a;
+  --good:#8fa678; --warn:#c2a05a; --bad:#c4695c;
+  --display:"Cormorant Garamond","Baskerville","Didot","Georgia",serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --r:14px;
+  --r:6px;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -164,39 +164,51 @@ textarea{min-height:110px;font-size:13px}
 .opt[aria-pressed="true"]{border-color:var(--ink);background:var(--raised)}
 .tag.prova{background:var(--ink);color:var(--bg)}
 .tag.ic{color:var(--violet)}
-/* ---------- tema British Racing Green ---------- */
-h1{font-weight:500;font-size:40px;line-height:1;text-transform:uppercase;letter-spacing:.035em}
-h2,h3{font-family:var(--body);font-weight:600;letter-spacing:0}
-h2{font-size:18px} h3{font-size:15.5px}
-.top{margin:calc(-1*(env(safe-area-inset-top,0px) + 14px)) -16px 16px;padding:calc(env(safe-area-inset-top,0px) + 26px) 16px 18px;background:radial-gradient(120% 140% at 0% 0%,#00562f 0%,var(--brg) 45%,var(--brg-d) 100%);border-bottom:1px solid rgba(198,169,106,.45);align-items:flex-end}
-.top .muted{color:rgba(236,231,218,.72)}
-.top .btn,.top .icon-btn{background:rgba(236,231,218,.1);border:1px solid rgba(236,231,218,.28);color:var(--ink)}
-.top .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--brg)}
-.card{border:1px solid var(--line)}
+/* ---------- tema: British Racing Green, latão e marfim ---------- */
+h1,h2,h3,.big{font-variant-numeric:lining-nums tabular-nums}
+h1{font-weight:600;font-size:42px;line-height:1;letter-spacing:-.005em}
+h2{font-weight:600;font-size:23px}
+h3{font-weight:600;font-size:20px;line-height:1.15}
+.top{align-items:flex-end;padding:8px 0 14px;margin-bottom:18px;border-bottom:1px solid var(--brass);box-shadow:0 3px 0 var(--bg),0 4px 0 rgba(179,154,98,.35)}
+.card{border:1px solid var(--line);border-radius:var(--r)}
 .card .card{border-color:transparent}
-.big{font-weight:500;font-size:31px;letter-spacing:.01em}
+.card-head{align-items:baseline}
+.big{font-weight:600;font-size:34px;line-height:1}
 .rings .rl{font-family:var(--body);font-weight:600;font-size:13px}
-.btn{border-color:var(--line)}
-.btn.primary{background:var(--brg);color:var(--ink);border-color:rgba(63,157,114,.6)}
-.link{text-decoration-color:var(--brg-l)}
-:focus-visible{outline-color:var(--brg-l)}
-.seg{border:1px solid var(--line);background:var(--surface)}
-.seg button[aria-pressed="true"]{background:var(--brg);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(63,157,114,.6)}
-.chk:checked{background:var(--brg);border-color:var(--brg-l)}
-.day[aria-pressed="true"]{background:var(--brg);border-color:var(--brg-l)}
+.btn{border-radius:6px;border-color:var(--line);background:none}
+.btn.primary{background:var(--brg);color:var(--ink);border-color:var(--brass)}
+.btn.danger{border-color:var(--line)}
+.icon-btn{background:none;border:1px solid var(--line)}
+.link{text-decoration-color:var(--brass);text-decoration-thickness:1px}
+:focus-visible{outline-color:var(--brass)}
+.seg{border-radius:6px;background:none;border:1px solid var(--line);padding:2px}
+.seg button{border-radius:4px}
+.seg button[aria-pressed="true"]{background:var(--brg);color:var(--ink)}
+.chip{border-radius:4px} .pill{border-radius:4px;background:none;border:1px solid var(--line)}
+.chk{border-radius:4px;border-width:1.5px}
+.chk:checked{background:var(--brg);border-color:var(--brass)}
+.bar{height:5px;border-radius:0} .bar>span{border-radius:0}
+.day{border-radius:6px;border-width:1px}
+.day[aria-pressed="true"]{background:var(--brg);border-color:var(--brass)}
 .day.today b::after{background:var(--brass)}
-.opt[aria-pressed="true"]{border-color:var(--brg-l);background:rgba(0,66,37,.4)}
-.pill.good{color:var(--brg-l)}
-nav{background:rgba(9,12,10,.94)}
-nav a[aria-current="page"] svg{stroke:var(--brg-l)}
-#plus{background:var(--brg);color:var(--ink);border:1px solid rgba(63,157,114,.7);box-shadow:0 6px 18px rgba(0,0,0,.6)}
-#sheet{border-top:2px solid var(--brg)}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brg-l)}
-table.t th{font-weight:500}
-.body .m{fill:#2f3a34} .body .base{fill:#222b26}
-.setn{border:1px solid var(--line)}
+.habit i{border-radius:1px}
+.opt{border-radius:6px;border-width:1px}
+.opt[aria-pressed="true"]{border-color:var(--brass);background:rgba(0,66,37,.45)}
+nav{background:rgba(14,13,11,.96);border-top-color:var(--line)}
+nav a[aria-current="page"]{color:var(--ink)}
+nav a[aria-current="page"] svg{stroke:var(--brass)}
+#plus{background:var(--brg);color:var(--ink);border:1px solid var(--brass);box-shadow:0 0 0 4px var(--bg),0 6px 18px rgba(0,0,0,.6);font-family:var(--display)}
+#sheet{border-radius:10px 10px 0 0;border-top:1px solid var(--brass)}
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=search],select,textarea{border-radius:6px;background:var(--bg)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brass)}
+#toast{border-radius:6px}
+.tip{border-radius:4px}
+.timerbar{border-radius:6px;border:1px solid var(--line)}
+.exbadge{border-radius:4px;font-family:var(--body)}
+.body .m{fill:#39362e} .body .base{fill:#27251f}
+.tag{border-radius:3px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media print{:root{color-scheme:light;--bg:#fff;--surface:#fff;--raised:#eee;--line:#ccc;--ink:#000;--ink2:#222;--mute:#555}nav,#toast,#scrim,#sheet,.noprint,.icon-btn,.btn{display:none!important}.top{background:none;border-bottom:1px solid #000;margin-top:0;padding-top:0}.card{break-inside:avoid;border:1px solid #ccc}}
+@media print{:root{color-scheme:light;--bg:#fff;--surface:#fff;--raised:#eee;--line:#ccc;--ink:#000;--ink2:#222;--mute:#555}nav,#toast,#scrim,#sheet,.noprint,.icon-btn,.btn{display:none!important}.top{box-shadow:none;border-bottom:1px solid #000}.card{break-inside:avoid;border:1px solid #ccc}}
 </style>
 </head>
 <body>
