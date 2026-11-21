@@ -64,7 +64,7 @@ h3{font-weight:700;font-size:16px}
 .icon-btn{width:42px;height:42px;border-radius:50%;border:0;background:var(--raised);display:grid;place-items:center;flex:none;font-size:18px}
 :focus-visible{outline:2px solid var(--kcal);outline-offset:2px}
 .seg{display:flex;background:var(--raised);border-radius:999px;padding:3px;gap:2px;overflow-x:auto}
-.seg button{flex:1;border:0;background:none;border-radius:999px;padding:8px 12px;white-space:nowrap;color:var(--ink2);font-size:14px;min-height:36px}
+.seg button{flex:1;border:0;background:none;border-radius:999px;padding:8px 9px;white-space:nowrap;color:var(--ink2);font-size:14px;min-height:36px}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
 .chip{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:2px 8px;font-size:12px;color:var(--ink2)}
 .chip.fill{background:var(--raised);border-color:var(--raised);color:var(--ink)}
@@ -610,7 +610,7 @@ function chart(cfg){
   const tk=niceTicks(lo,hi);lo=tk[0];hi=tk[tk.length-1];
   const bars=cfg.series.some(s=>s.type==="bar"),iw=(W-L-R)/(bars?n:Math.max(1,n-1));
   const X=i=>bars?L+iw*(i+.5):L+iw*i,Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
-  let g=tk.map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="${t===0?1:.6}" stroke-dasharray="${t===0?"":"2 4"}"/><text x="${W-R+5}" y="${Y(t)+3.5}">${nf(t,cfg.dec&&Math.abs(hi-lo)<10?1:0)}</text>`).join("");
+  let g=tk.map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="${t===0?1:.6}" stroke-dasharray="${t===0?"":"2 4"}"/><text x="${W-R+5}" y="${Y(t)+3.5}">${cfg.fmt?cfg.fmt(t):nf(t,cfg.dec&&Math.abs(hi-lo)<10?1:0)}</text>`).join("");
   const stepL=Math.ceil(n/5);
   for(let i=0;i<n;i+=stepL)g+=`<text x="${X(i)}" y="${H-5}" text-anchor="${i===0&&!bars?"start":"middle"}">${esc(cfg.labels[i])}</text>`;
   if(cfg.band){let up="",dn="";for(let i=0;i<n;i++){if(cfg.band.lo[i]==null)continue;up+=(up?"L":"M")+X(i)+" "+Y(cfg.band.hi[i]);dn="L"+X(i)+" "+Y(cfg.band.lo[i])+dn}if(up)g+=`<path d="${up}${dn}Z" fill="${cfg.band.color}" opacity=".18"/>`}
@@ -628,7 +628,7 @@ function chart(cfg){
 function chartHover(el,ev){
   const cfg=CH[el.dataset.chart];if(!cfg||!cfg._g)return;const g=cfg._g,rc=el.getBoundingClientRect(),x=(ev.clientX-rc.left)/rc.width*g.W;
   let i=g.bars?Math.floor((x-g.L)/g.iw):Math.round((x-g.L)/g.iw);i=clamp(i,0,g.n-1);
-  const rows=cfg.series.filter(s=>s.vals[i]!=null).map(s=>`<span><span class="dot" style="background:${s.color}"></span>${esc(s.name)}: <b style="display:inline">${nf(s.vals[i],cfg.dec?1:0)}${cfg.unit?" "+cfg.unit:""}</b></span>`).join("<br>");
+  const rows=cfg.series.filter(s=>s.vals[i]!=null).map(s=>`<span><span class="dot" style="background:${s.color}"></span>${esc(s.name)}: <b style="display:inline">${cfg.fmt?cfg.fmt(s.vals[i]):nf(s.vals[i],cfg.dec?1:0)}${cfg.unit?" "+cfg.unit:""}</b></span>`).join("<br>");
   const tip=$(".tip",el),cr=$(".cross",el),cx=g.bars?g.L+g.iw*(i+.5):g.L+g.iw*i;
   cr.setAttribute("x1",cx);cr.setAttribute("x2",cx);cr.style.display="";
   tip.innerHTML=`<b>${esc(cfg.full?cfg.full[i]:cfg.labels[i])}</b>${rows||"sem registro"}`;tip.style.display="block";
@@ -920,7 +920,7 @@ let recMode="rm",lvlW=4,curDay=null,curEx=null;
 function vTreino(){
   const s=sub.treino,a=S.train.active;
   return `<div class="top"><div><h1>Treino</h1></div>${a?`<button class="btn sm primary" data-act="resume">Voltar ao treino</button>`:`<button class="btn sm" data-act="freeworkout">+ Treino livre</button>`}</div>
-  <div class="stack">${seg("treino",[["treinos","Treinos"],["painel","Painel"],["niveis","Níveis"],["hist","Histórico"]],s)}${s==="treinos"?tTreinos():s==="painel"?tPainel():s==="niveis"?tNiveis():tHist()}</div>`;
+  <div class="stack">${seg("treino",[["treinos","Treinos"],["painel","Painel"],["niveis","Níveis"],["esporte","Esportes"],["hist","Histórico"]],s)}${s==="treinos"?tTreinos():s==="painel"?tPainel():s==="niveis"?tNiveis():s==="esporte"?tEsporte():tHist()}</div>`;
 }
 function sessRow(s){const n=sum(s.ex,e=>e.sets.length),vol=sum(s.ex,e=>sum(e.sets,q=>q.kg*q.r));return `<div class="li" data-act="sess" data-id="${s.id}" style="cursor:pointer"><span class="grow">${esc(s.name)}<br><span class="tiny muted">${wdmy(s.d)} · ${n} séries · ${nf(vol)} kg de volume${s.min?" · "+dur(s.min):""}</span></span><span class="muted">›</span></div>`}
 function tTreinos(){
@@ -1130,7 +1130,7 @@ function vHoje(){
 }
 function plusSheet(){
   const nd=nextDay(),b=(act,l,s,extra="")=>`<button class="card tap" style="border:0;text-align:left;background:var(--raised)" data-act="${act}" ${extra}><b>${l}</b><br><span class="tiny muted">${s}</span></button>`;
-  sheet("Adicionar",`<div class="grid2">${b("addfood","Alimento","buscar e registrar")}${b("quickadd","Adição rápida","só calorias e macros")}${b("addmetric","Peso","pesagem do dia",'data-m="peso"')}${b("addmetric","Gordura corporal","percentual",'data-m="bf"')}${S.train.active?b("resume","Voltar ao treino",esc(S.train.active.name)):nd?b("start","Iniciar treino",esc(nd.name),`data-id="${nd.id}"`):b("freeworkout","Treino livre","sem programa")}${b("freeworkout","Treino livre","montar na hora")}${b("sadd","Bloco de estudo","planejar")}${S.study.timer?b("tstop","Parar cronômetro",esc(S.study.timer.subject)):b("tstart","Cronômetro","estudar agora")}${b("addmetric","Passos","total do dia",'data-m="passos"')}</div>`);
+  sheet("Adicionar",`<div class="grid2">${b("addfood","Alimento","buscar e registrar")}${b("quickadd","Adição rápida","só calorias e macros")}${b("addmetric","Peso","pesagem do dia",'data-m="peso"')}${b("addmetric","Gordura corporal","percentual",'data-m="bf"')}${S.train.active?b("resume","Voltar ao treino",esc(S.train.active.name)):nd?b("start","Iniciar treino",esc(nd.name),`data-id="${nd.id}"`):b("freeworkout","Treino livre","sem programa")}${b("freeworkout","Treino livre","montar na hora")}${b("cardio","Corrida ou esporte","km, tempo, kcal, dor")}${b("sadd","Bloco de estudo","planejar")}${S.study.timer?b("tstop","Parar cronômetro",esc(S.study.timer.subject)):b("tstart","Cronômetro","estudar agora")}${b("addmetric","Passos","total do dia",'data-m="passos"')}</div>`);
 }
 /* ================= MAIS ================= */
 function vMais(){
@@ -1325,7 +1325,7 @@ function vRecov(){const t=today(),days=[];for(let i=13;i>=0;i--)days.push(addDay
   return backHead("Recuperação")+`<div class="stack"><div class="card"><h3>Nota de recuperação</h3><div class="muted tiny" style="margin-bottom:8px">14 dias · 0 a 100</div>${chart({labels:lab,full,zero:true,series:[{name:"Recuperação",color:"var(--carb)",type:"line",vals:days.map(recScore)}]})}<p class="muted tiny" style="margin:8px 0 0">Calculada com sono (45%), dor muscular (20%), energia ao acordar (20%) e carga de treino da véspera (15%). É uma estimativa por questionário, sem sensor.</p></div>
   <div class="card"><div class="card-head"><h3>Sono</h3><button class="btn sm" data-act="sleepneed">Meta: ${nf(need,1)} h</button></div>${chart({h:140,labels:lab,full,series:[{name:"Dormido",color:"var(--violet)",type:"bar",vals:days.map(d=>dy[d]&&dy[d].sleep!=null?dy[d].sleep:null)},{name:"Necessário",color:"var(--ink2)",type:"line",dash:true,vals:days.map(()=>need)}],unit:"h",dec:true})}<p class="sec small" style="margin:8px 0 0">Dívida de sono nos últimos 7 dias: <b>${nf(sleepDebt().debt,1)} h</b> em ${sleepDebt().n} noite${sleepDebt().n===1?"":"s"} registrada${sleepDebt().n===1?"":"s"}.</p></div>
   <div class="card"><h3>Carga do dia</h3><div class="muted tiny" style="margin-bottom:8px">musculação, cardio e esporte somados</div>${chart({h:140,labels:lab,full,series:[{name:"Carga",color:"var(--prot)",type:"bar",vals:days.map(dayLoad)}]})}<p class="muted tiny" style="margin:8px 0 0">Cada série conta mais quanto mais perto da falha; cardio e esporte entram por minutos e intensidade. Acima de 70 num dia é carga alta.</p></div>
-  <div class="card"><div class="card-head"><h3>Cardio e esporte</h3><button class="btn sm" data-act="cardio">+ Registrar</button></div>${ca.length?`<div class="list">${ca.slice(0,30).map(c=>`<div class="li"><span class="grow">${esc(c.n)}<br><span class="tiny muted">${wdmy(c.d)} · ${c.min} min · ${["","leve","moderado","forte"][c.i]}</span></span><button class="btn sm ghost danger" data-act="cardiodel" data-id="${c.id}" aria-label="Excluir">✕</button></div>`).join("")}</div>`:`<p class="empty">Registre o cardio da noite e o tênis para entrarem na carga do dia.</p>`}</div></div>`}
+  <div class="card"><div class="card-head"><h3>Cardio e esporte</h3><button class="btn sm" data-act="cardio">+ Registrar</button></div>${ca.length?`<div class="list">${ca.slice(0,30).map(spRow).join("")}</div>`:`<p class="empty">Registre corrida, tênis e outros treinos para entrarem na carga do dia. Os gráficos ficam em Treino, na aba Esportes.</p>`}</div></div>`}
 /* --- caderno de erros --- */
 const GAPS=[1,3,7,14,30];
 function errNext(e){let nx=addDays(today(),GAPS[Math.min(e.lvl,GAPS.length-1)]);const k=subjKey(e.subject),x=exams().find(i=>i.date>today()&&subjKey(i.subject)===k);if(x&&nx>=x.date)nx=addDays(x.date,-1)>today()?addDays(x.date,-1):addDays(today(),1);return nx}
@@ -1339,6 +1339,84 @@ function revDraw(){const e=S.study.errs.find(x=>x.id===rev.id);sheet("Revisão �
 function errForm(e){const ss=subjects();openForm(e?"Editar erro":"Novo erro",[{k:"s",label:"Matéria",type:"select",options:[...new Set([...(e?[e.subject]:[]),...ss])].map(x=>[x,x]).concat([["__","Outra…"]]),def:e?e.subject:ss[0]},{k:"o",label:"Outra matéria (opcional)"},{k:"q",label:"O que caiu ou o que você errou",type:"textarea",def:e?.q,ph:"Ex.: mecanismo de ação da vancomicina"},{k:"a",label:"Resposta certa ou explicação",type:"textarea",def:e?.a}],v=>{
   if(v==="del"){S.study.errs=S.study.errs.filter(x=>x.id!==e.id);closeSheet();commit();return}const s=v.s==="__"||!v.s?v.o:v.s;if(!s||!v.q){toast("Informe a matéria e o que você errou.");return}
   if(e)Object.assign(e,{subject:s,q:v.q,a:v.a});else (S.study.errs??=[]).push({id:rid(),subject:s,q:v.q,a:v.a,date:today(),lvl:0,next:addDays(today(),1)});closeSheet();commit();toast(e?"Atualizado.":"Erro anotado. Primeira revisão amanhã.")},{del:!!e})}
+/* --- esportes: corrida, tênis e outros treinos fora da musculação --- */
+/* id, nome, usa distância */
+const SPORTS=[["corrida","Corrida",1],["tenis","Tênis",0],["caminhada","Caminhada",1],["bike","Bike",1],["natacao","Natação",1],["outro","Outro",0]];
+const spDef=t=>SPORTS.find(x=>x[0]===t)||SPORTS[5];
+function spType(c){if(c.tp)return spDef(c.tp)[0];const n=norm(c.n||"");return /corr|run|esteira/.test(n)?"corrida":/tenis/.test(n)?"tenis":/caminh/.test(n)?"caminhada":/bike|cicl|pedal/.test(n)?"bike":/nata/.test(n)?"natacao":"outro"}
+const spName=c=>c.n||spDef(spType(c))[1];
+const tfmt=m=>{const s=Math.round(m*60),h=Math.floor(s/3600),mm=Math.floor(s/60)%60,ss=s%60;return h?h+":"+pad(mm)+":"+pad(ss):mm+":"+pad(ss)};
+const tshow=m=>Math.round(m*60)%60?tfmt(m):dur(m);
+function tparse(v){const p=String(v||"").trim().split(":").map(x=>num(x));if(!p.length||p.length>3||p.some(x=>x==null||x<0))return null;return p.length===1?p[0]:p.length===2?p[0]+p[1]/60:p[0]*60+p[1]+p[2]/60}
+const spPace=c=>c.km>0&&c.min>0?c.min/c.km:null,spSpeed=c=>c.km>0&&c.min>0?c.km/(c.min/60):null;
+function spRow(c){const pc=spPace(c),bk=spType(c)==="bike";
+  return `<div class="li" data-act="spedit" data-id="${c.id}" style="cursor:pointer"><span class="grow">${esc(spName(c))}<br><span class="tiny muted">${wdmy(c.d)} · ${tshow(c.min)}${c.km?" · "+nf(c.km,2)+" km":""}${pc?" · "+(bk?nf(spSpeed(c),1)+" km/h":tfmt(pc)+"/km"):""}${c.kcal?" · "+nf(c.kcal)+" kcal":""}${c.pain?" · dor "+c.pain:""}</span></span><span class="muted">›</span></div>`}
+function spForm(c,tp){
+  const x=c||{},o10=(a,z)=>[["","não informar"]].concat(Array.from({length:11-a},(_,i)=>[i+a,(i+a)+(i+a===a?" · "+z[0]:i+a===10?" · "+z[1]:"")]));
+  openForm(c?"Editar atividade":"Corrida ou esporte",[
+    {k:"tp",label:"Modalidade",type:"select",half:true,def:c?spType(c):tp||"corrida",options:SPORTS.map(s=>[s[0],s[1]])},
+    {k:"d",label:"Data",type:"date",half:true,def:x.d||today()},
+    {k:"min",label:"Tempo",half:true,def:x.min?tfmt(x.min):"",ph:"45:30"},
+    {k:"km",label:"Distância (km)",type:"number",half:true,def:x.km??"",ph:"8,2"},
+    {k:"kcal",label:"Calorias (kcal)",type:"number",half:true,def:x.kcal??"",ph:"do relógio"},
+    {k:"hr",label:"FC média (bpm)",type:"number",half:true,def:x.hr??""},
+    {k:"hrx",label:"FC máxima (bpm)",type:"number",half:true,def:x.hrx??""},
+    {k:"rpe",label:"Esforço (1 a 10)",type:"select",half:true,def:x.rpe??"",options:o10(1,["muito leve","máximo"])},
+    {k:"pain",label:"Dor (0 a 10)",type:"select",half:true,def:x.pain??"",options:o10(0,["sem dor","insuportável"])},
+    {k:"rec",label:"Recuperação",type:"select",half:true,def:x.rec??"",options:[["","não informar"],[1,"1 · muito cansado"],[2,"2 · cansado"],[3,"3 · normal"],[4,"4 · bem"],[5,"5 · 100% recuperado"]]},
+    {k:"painAt",label:"Onde doeu",def:x.painAt||"",ph:"joelho direito, canela"},
+    {k:"n",label:"Nome da atividade (opcional)",def:c&&c.n!==spDef(spType(c))[1]?c.n||"":"",ph:"Longão, tiros, jogo de duplas"},
+    {k:"note",label:"Observações",type:"textarea",def:x.note||"",ph:"tênis usado, clima, como foi"}
+  ],v=>{
+    if(v==="del"){S.body.cardio=S.body.cardio.filter(q=>q.id!==c.id);closeSheet();commit();toast("Atividade excluída.");return}
+    const m=tparse(v.min);if(!m||m<=0||m>1440){toast("Informe o tempo: minutos (45) ou min:seg (45:30).");return}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(v.d)){toast("Informe a data.");return}
+    const pos=(n,max)=>n!=null&&n>0&&n<=max?n:null,sel=q=>q===""?null:+q,rpe=sel(v.rpe);
+    const e={id:c?c.id:rid(),d:v.d,tp:v.tp,n:v.n||spDef(v.tp)[1],min:Math.round(m*100)/100,i:rpe?(rpe<=4?1:rpe<=7?2:3):(c&&c.i)||2,
+      km:pos(v.km,1000),kcal:pos(v.kcal,20000)&&Math.round(v.kcal),hr:pos(v.hr,250)&&Math.round(v.hr),hrx:pos(v.hrx,250)&&Math.round(v.hrx),rpe,pain:sel(v.pain),rec:sel(v.rec),painAt:v.painAt,note:v.note};
+    if(c)Object.assign(c,e);else (S.body.cardio??=[]).push(e);
+    closeSheet();commit();toast(c?"Atividade atualizada.":"Atividade salva.")},{ok:c?"Salvar":"Registrar",del:!!c});
+}
+const spStat=(a,b)=>`<div class="f2" style="margin-bottom:8px"><div><div class="tiny muted">${a[0]}</div><div class="big num">${a[1]}<small>${a[2]}</small></div></div>${b?`<div><div class="tiny muted">${b[0]}</div><div class="big num">${b[1]}<small>${b[2]}</small></div></div>`:""}</div>`;
+function tEsporte(){
+  const all=sortBy(S.body.cardio||[],c=>c.d),types=SPORTS.filter(s=>all.some(c=>spType(c)===s[0]));
+  let f=sub.spf||"todas";if(f!=="todas"&&!types.some(s=>s[0]===f))f="todas";
+  const add=`<button class="btn primary block" data-act="cardio" ${f!=="todas"?`data-tp="${f}"`:""}>+ Registrar ${f==="todas"?"corrida ou esporte":esc(spDef(f)[1].toLowerCase())}</button>`;
+  if(!all.length)return `<div class="card"><h3>Corrida, tênis e outros esportes</h3><p class="sec small">Depois de cada treino fora da musculação, copie do relógio o tempo, a distância, as calorias e os batimentos, e anote esforço, dor e recuperação. Fica tudo salvo e vira tabela e gráficos de evolução aqui.</p>${add}</div>`;
+  const L=f==="todas"?all:all.filter(c=>spType(c)===f),dist=f!=="todas"&&spDef(f)[2]&&L.some(c=>c.km),bk=f==="bike";
+  const t=today(),m0=monday(t),wks=[];for(let i=7;i>=0;i--)wks.push(addDays(m0,-7*i));
+  const inW=w=>L.filter(c=>c.d>=w&&c.d<addDays(w,7)),wl=wks.map(w=>D8(w).getDate()+"/"+(D8(w).getMonth()+1)),wf=wks.map(w=>"Semana de "+dmy(w));
+  const cw=inW(m0),S20=L.slice(-20),lab=S20.map(c=>D8(c.d).getDate()+"/"+(D8(c.d).getMonth()+1)),full=S20.map(c=>spName(c)+" · "+wdmy(c.d));
+  const has=k=>S20.some(c=>c[k]!=null),col=k=>S20.map(c=>c[k]??null),sub2=`<div class="muted tiny" style="margin-bottom:8px">últimas ${S20.length} ${S20.length===1?"sessão":"sessões"}</div>`;
+  const card=(title,body,note="")=>`<div class="card"><h3>${title}</h3>${body}${note?`<p class="muted tiny" style="margin:8px 0 0">${note}</p>`:""}</div>`;
+  let h=`${types.length>1?seg("spf",[["todas","Tudo"]].concat(types.map(s=>[s[0],s[1]])),f):""}
+  <div class="card"><div class="card-head"><h3>Esta semana</h3><span class="muted small">${f==="todas"?"todos os esportes":esc(spDef(f)[1])}</span></div>
+    ${spStat(["Sessões",cw.length,""],["Tempo",cw.length?dur(sum(cw,c=>c.min)):"--",""])}${spStat(dist?["Distância",nf(sum(cw,c=>c.km),1),"km"]:["Total registrado",L.length,L.length===1?"sessão":"sessões"],["Calorias",nf(sum(cw,c=>c.kcal)),"kcal"])}${add}</div>`;
+  if(dist){const wp=L.filter(c=>spPace(c)),best=wp.length?wp.reduce((a,c)=>spPace(c)<spPace(a)?c:a):null,far=L.filter(c=>c.km).reduce((a,c)=>c.km>a.km?c:a);
+    h+=`<div class="card"><h3>Recordes</h3>${spStat(["Maior distância",nf(far.km,2),"km · "+dmy(far.d)],best?[bk?"Maior velocidade média":"Melhor pace",bk?nf(spSpeed(best),1):tfmt(spPace(best)),(bk?"km/h":"/km")+" · "+dmy(best.d)]:null)}<div class="small sec num">Total acumulado: <b>${nf(sum(L,c=>c.km),1)} km</b> em ${L.length} ${L.length===1?"sessão":"sessões"}.</div></div>`;
+    h+=card("Distância por semana",chart({h:150,labels:wl,full:wf,series:[{name:"Distância",color:"var(--kcal)",type:"bar",vals:wks.map(w=>r1(sum(inW(w),c=>c.km)))}],unit:"km",dec:true}));
+    h+=bk?card("Velocidade média",sub2+chart({labels:lab,full,series:[{name:"Velocidade",color:"var(--carb)",type:"line",vals:S20.map(c=>{const v=spSpeed(c);return v?r1(v):null})}],unit:"km/h",dec:true}))
+      :card("Pace",sub2+chart({labels:lab,full,fmt:tfmt,series:[{name:"Pace",color:"var(--carb)",type:"line",vals:S20.map(spPace)}],unit:"/km"}),"Minutos por quilômetro. Quanto mais baixa a linha, mais rápido você correu.");
+    h+=card("Distância por sessão",sub2+chart({h:130,labels:lab,full,series:[{name:"Distância",color:"var(--kcal)",type:"bar",vals:col("km")}],unit:"km",dec:true}));
+  }else{
+    h+=card("Tempo por semana",chart({h:150,labels:wl,full:wf,series:[{name:"Tempo",color:"var(--kcal)",type:"bar",vals:wks.map(w=>Math.round(sum(inW(w),c=>c.min)))}],unit:"min"}));
+    if(f!=="todas")h+=card("Duração por sessão",sub2+chart({h:130,labels:lab,full,series:[{name:"Duração",color:"var(--carb)",type:"bar",vals:S20.map(c=>Math.round(c.min))}],unit:"min"}));
+  }
+  if(f==="todas")h+=card("Calorias por semana",chart({h:150,labels:wl,full:wf,series:[{name:"Calorias",color:"var(--prot)",type:"bar",vals:wks.map(w=>sum(inW(w),c=>c.kcal))}],unit:"kcal"}));
+  else{
+    if(has("kcal"))h+=card("Calorias por sessão",sub2+chart({h:130,labels:lab,full,series:[{name:"Calorias",color:"var(--prot)",type:"bar",vals:col("kcal")}],unit:"kcal"}));
+    if(has("hr")||has("hrx"))h+=card("Batimentos",sub2+chart({h:150,labels:lab,full,series:[{name:"FC média",color:"var(--bad)",type:"line",vals:col("hr")},{name:"FC máxima",color:"var(--violet)",type:"dots",vals:col("hrx")}],unit:"bpm"}),dist&&!bk?"Mesmo pace com FC média mais baixa ao longo das semanas indica melhora do condicionamento.":"");
+    if(has("pain")||has("rpe"))h+=card("Dor e esforço",sub2+chart({h:140,zero:true,labels:lab,full,series:[{name:"Dor (0 a 10)",color:"var(--bad)",type:"bar",vals:col("pain")},{name:"Esforço (1 a 10)",color:"var(--fat)",type:"line",vals:col("rpe")}]}));
+    if(has("rec"))h+=card("Recuperação",sub2+chart({h:120,zero:true,labels:lab,full,series:[{name:"Recuperação (1 a 5)",color:"var(--good)",type:"line",vals:col("rec")}]}),"Como seu corpo estava em cada sessão: 1 é muito cansado, 5 é totalmente recuperado.");
+  }
+  const rows=[...L].reverse().slice(0,60),td=(v,r=1)=>`<td${r?' class="r"':""}>${v}</td>`,dm_=c=>D8(c.d).getDate()+"/"+(D8(c.d).getMonth()+1),n_=(v,d=0)=>v==null?"–":nf(v,d);
+  const cols=f==="todas"?[["Data",0,dm_],["Atividade",0,c=>esc(spName(c))],["Tempo",1,c=>tshow(c.min)],["kcal",1,c=>n_(c.kcal)],["Dor",1,c=>n_(c.pain)]]
+    :dist?[["Data",0,dm_],["km",1,c=>n_(c.km,2)],["Tempo",1,c=>tshow(c.min)],[bk?"km/h":"Pace",1,c=>spPace(c)?(bk?nf(spSpeed(c),1):tfmt(spPace(c))):"–"],["kcal",1,c=>n_(c.kcal)],["FC",1,c=>n_(c.hr)],["Dor",1,c=>n_(c.pain)]]
+    :[["Data",0,dm_],["Tempo",1,c=>tshow(c.min)],["kcal",1,c=>n_(c.kcal)],["FC",1,c=>n_(c.hr)],["Esf.",1,c=>n_(c.rpe)],["Dor",1,c=>n_(c.pain)],["Rec.",1,c=>n_(c.rec)]];
+  h+=`<div class="card"><div class="card-head"><h3>Histórico</h3><span class="muted small">toque para editar</span></div><div style="overflow-x:auto"><table class="t num"><thead><tr>${cols.map(k=>`<th${k[1]?' class="r"':""}>${k[0]}</th>`).join("")}</tr></thead><tbody>${rows.map(c=>`<tr data-act="spedit" data-id="${c.id}" style="cursor:pointer">${cols.map(k=>td(k[2](c),k[1])).join("")}</tr>`).join("")}</tbody></table></div></div>`;
+  return h;
+}
+Object.assign(ACT,{spedit(el){const c=(S.body.cardio||[]).find(q=>q.id===el.dataset.id);if(c)spForm(c)}});
 /* --- ações --- */
 Object.assign(ACT,{
   start(el){closeSheet();if(S.train.active){go(vWorkout);return}const d=S.train.prog.days.find(x=>x.id===el.dataset.id);if(d)readySheet(d)},
@@ -1358,7 +1436,7 @@ Object.assign(ACT,{
   wake(){const x=(S.body.day||{})[today()]||{};openForm("Como você acordou?",[{k:"sleep",label:"Horas de sono",type:"number",def:x.sleep??"",ph:"6,5"},{k:"sore",label:"Dor muscular",type:"select",half:true,def:x.sore||2,options:[[1,"1 · nenhuma"],[2,"2 · leve"],[3,"3 · moderada"],[4,"4 · forte"],[5,"5 · muito forte"]]},{k:"energy",label:"Energia",type:"select",half:true,def:x.energy||3,options:R15}],v=>{if(v.sleep==null||v.sleep<0||v.sleep>16){toast("Informe as horas de sono.");return}Object.assign(((S.body.day??={})[today()]??={}),{sleep:v.sleep,sore:+v.sore,energy:+v.energy});closeSheet();commit()},{ok:"Registrar"})},
   recview(){go(vRecov)},
   sleepneed(){openForm("Meta de sono",[{k:"n",label:"Horas de sono de que você precisa",type:"number",def:S.settings.sleepNeed||8}],v=>{S.settings.sleepNeed=clamp(v.n||8,5,11);closeSheet();commit()})},
-  cardio(){openForm("Cardio ou esporte",[{k:"n",label:"Atividade",def:"Cardio",ph:"Esteira, bike, tênis"},{k:"min",label:"Minutos",type:"number",half:true},{k:"i",label:"Intensidade",type:"select",half:true,def:2,options:[[1,"Leve"],[2,"Moderada"],[3,"Forte"]]},{k:"d",label:"Data",type:"date",def:today()}],v=>{if(!v.min||v.min<=0||!v.d){toast("Informe os minutos.");return}(S.body.cardio??=[]).push({id:rid(),d:v.d,n:v.n||"Cardio",min:Math.round(v.min),i:+v.i});closeSheet();commit();toast("Registrado.")},{ok:"Registrar"})},
+  cardio(el){spForm(null,el&&el.dataset.tp)},
   cardiodel(el){S.body.cardio=S.body.cardio.filter(c=>c.id!==el.dataset.id);commit()},
   errnew(){errForm()},errrev(){revSheet()},revshow(){rev.show=true;revDraw()},
   revyes(){const e=S.study.errs.find(x=>x.id===rev.id);e.lvl=Math.min(e.lvl+1,GAPS.length);e.next=errNext(e);save();revSheet()},
