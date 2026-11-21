@@ -163,6 +163,7 @@ textarea{min-height:110px;font-size:13px}
 .tag.prova{background:var(--ink);color:var(--bg)}
 .tag.ic{color:var(--violet)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{:root{color-scheme:light;--bg:#fff;--surface:#fff;--raised:#eee;--line:#ccc;--ink:#000;--ink2:#222;--mute:#555}nav,#toast,#scrim,#sheet,.noprint,.icon-btn,.btn{display:none!important}.card{break-inside:avoid;border:1px solid #ccc}}
 </style>
 </head>
 <body>
@@ -586,7 +587,7 @@ function openForm(title,fields,cb,opts={}){
   const f=x=>{const id="f_"+x.k,v=x.def??"";
     if(x.type==="select")return `<select id="${id}">${x.options.map(o=>`<option value="${esc(o[0])}" ${String(o[0])===String(v)?"selected":""}>${esc(o[1])}</option>`).join("")}</select>`;
     if(x.type==="textarea")return `<textarea id="${id}" placeholder="${esc(x.ph||"")}">${esc(v)}</textarea>`;
-    return `<input id="${id}" type="${x.type==="number"?"text":x.type||"text"}" ${x.type==="number"?'inputmode="decimal"':""} value="${esc(v)}" placeholder="${esc(x.ph||"")}">`};
+    return `<input id="${id}" type="${x.type==="number"?"text":x.type||"text"}" ${x.type==="number"?'inputmode="decimal"':""} value="${esc(v)}" placeholder="${esc(x.ph||"")}" ${x.list?`list="${id}_l"`:""}>${x.list?`<datalist id="${id}_l">${x.list.map(o=>`<option value="${esc(o)}">`).join("")}</datalist>`:""}`};
   let h="",row=[];
   const flush=()=>{if(row.length){h+=`<div class="${row.length===2?"f2":row.length===3?"f3":"f4"}">${row.join("")}</div>`;row=[]}};
   for(const x of fields){const b=`<div class="field"><label for="f_${x.k}">${esc(x.label)}</label>${f(x)}${x.help?`<span class="help">${esc(x.help)}</span>`:""}</div>`;if(x.half){row.push(b);if(row.length===(x.half===true?2:x.half))flush()}else{flush();h+=b}}
@@ -658,7 +659,7 @@ function recipeFood(r){const t={k:0,p:0,c:0,f:0};r.items.forEach(i=>{for(const m
 const allFoods=()=>[...S.diet.recipes.map(recipeFood),...S.diet.foods,...FOODS];
 const foodById=id=>allFoods().find(f=>f.id===id);
 function dayTot(d){const e=S.dlog[d]||[];return {k:sum(e,x=>x.k),p:sum(e,x=>x.p),c:sum(e,x=>x.c),f:sum(e,x=>x.f),n:e.length}}
-function progAt(d){const b=progBase(d),cy=S.diet.cyc;if(!cy||!cy.days||!cy.days.length||cy.days.length>6)return b;
+function progAt0(d){const b=progBase(d),cy=S.diet.cyc;if(!cy||!cy.days||!cy.days.length||cy.days.length>6)return b;
   const nT=cy.days.length,isT=cy.days.includes(D8(d).getDay()),lo=Math.min(cy.d*nT/(7-nT),b.kcal*0.12),hi=lo*(7-nT)/nT,dk=isT?hi:-lo;let c=b.c,f=b.f;
   if(b.style==="keto")f+=dk/9;else if(dk>0)c+=dk/4;else{const cut=Math.min(-dk,c*0.5*4);c-=cut/4;f-=(-dk-cut)/9}
   return {...b,kcal:Math.round(b.kcal+dk),c:Math.round(c),f:Math.round(Math.max(0,f)),dayType:isT?"treino":"descanso"}}
@@ -718,7 +719,7 @@ function dDiario(){
   e.forEach(x=>(hours[x.t.slice(0,2)]??=[]).push(x));
   const list=Object.keys(hours).sort().map(h=>`<div class="hr"><div class="h num">${h}:00<br><span class="tiny">${nf(sum(hours[h],x=>x.k))} kcal</span></div><div>${hours[h].map(x=>`<div class="food" data-act="editentry" data-id="${x.id}"><span class="grow">${esc(x.n)}<br><span class="tiny muted">${x.g?nf(x.g)+(x.u?" porç.":" g")+" · ":""}P ${nf(x.p)} · C ${nf(x.c)} · G ${nf(x.f)}</span></span><b class="num">${nf(x.k)}</b></div>`).join("")}</div></div>`).join("");
   return `${dayStrip(dDate,"dday")}
-  <div class="card"><div class="card-head"><h3>${dDate===today()?"Hoje":wdmy(dDate)}${pr.dayType?` <span class="chip">dia de ${pr.dayType}</span>`:""}</h3><span class="muted small num">${nf(pr.kcal-tot.k)} kcal restantes</span></div>${macroBars(tot,pr)}</div>${mealCard()}
+  <div class="card"><div class="card-head"><h3>${dDate===today()?"Hoje":wdmy(dDate)}${pr.dayType?` <span class="chip">dia de ${pr.dayType}</span>`:""}</h3><span class="muted small num">${nf(pr.kcal-tot.k)} kcal restantes</span></div>${macroBars(tot,pr)}${spNote(dDate,pr)}</div>${mealCard()}
   <div class="card"><div class="card-head"><h3>Refeições</h3><span class="muted small">${e.length} ${e.length===1?"item":"itens"}</span></div>
     ${list||`<p class="empty">Nada registrado neste dia. Toque em Adicionar para buscar um alimento.</p>`}
     <div class="row wrap" style="margin-top:12px"><button class="btn primary grow" data-act="addfood">Adicionar alimento</button><button class="btn" data-act="quickadd">Adição rápida</button></div>
@@ -1100,7 +1101,8 @@ function ePainel(){
   <div class="card"><div class="card-head"><h3>Horas por dia</h3><span class="muted small">2 semanas atrás até a próxima</span></div>${chart({labels:days.map(d=>D8(d).getDate()+"/"+(D8(d).getMonth()+1)),full:days.map(wdmy),series:[{name:"Feito",color:"var(--violet)",type:"bar",vals:dv},{name:"Planejado",color:"var(--ink2)",type:"line",dash:true,vals:pv}],unit:"h",dec:true})}</div>
   <div class="card"><div class="card-head"><h3>Horas por semana</h3><span class="muted small">8 semanas</span></div>${chart({h:140,labels:wks.map(w=>D8(w.m).getDate()+"/"+(D8(w.m).getMonth()+1)),full:wks.map(w=>"Semana de "+dmy(w.m)),series:[{name:"Feito",color:"var(--violet)",type:"bar",vals:wks.map(w=>w.v)},{name:"Planejado",color:"var(--ink2)",type:"line",dash:true,vals:wks.map(w=>w.p)}],unit:"h",dec:true})}</div>
   <div class="card"><div class="card-head"><h3>Por matéria</h3><span class="muted small">últimos 30 dias em diante</span></div>${sb.length?sb.map(([k,v])=>`<div style="padding:8px 0;border-top:1px solid var(--line)"><div class="row between small"><span>${esc(k)}</span><span class="num"><b>${dur(v.d)}</b> de ${dur(v.p)}</span></div><div class="bar" style="margin-top:5px;width:${Math.max(8,v.p/mx*100)}%"><span style="width:${v.p?v.d/v.p*100:0}%;background:var(--violet)"></span></div></div>`).join(""):`<p class="empty">Sem blocos de estudo no período.</p>`}<p class="muted tiny" style="margin:8px 0 0">O tamanho da barra é o tempo planejado; a parte colorida é o que já foi feito.</p></div>
-  <div class="card"><h3>Dias com estudo feito</h3><div class="muted tiny" style="margin-bottom:8px">últimos 30 dias</div>${habitGrid(d=>st.some(i=>i.date===d&&i.done),"var(--violet)")}</div>`;
+  <div class="card"><h3>Dias com estudo feito</h3><div class="muted tiny" style="margin-bottom:8px">últimos 30 dias</div>${habitGrid(d=>st.some(i=>i.date===d&&i.done),"var(--violet)")}</div>
+  <div class="card"><h3>Calendário</h3><p class="sec small" style="margin:6px 0 10px">Leve os blocos e provas futuros do plano para o calendário do celular.</p><button class="btn block" data-act="sics">Exportar para o calendário</button></div>`;
 }
 function itemForm(i){
   const f=[{k:"subject",label:"Matéria ou atividade",def:i?.subject,ph:"Farmacologia"},{k:"task",label:"O que fazer",def:i?.task,ph:"Questões + pontos fracos"},{k:"type",label:"Tipo",type:"select",options:Object.entries(TAGS),def:i?.type||"estudo",half:true},{k:"date",label:"Data",type:"date",def:i?.date||eDate,half:true},{k:"s",label:"Início",type:"time",def:i?.s||"08:00",half:true},{k:"e",label:"Fim",type:"time",def:i?.e||"10:00",half:true}];
@@ -1118,7 +1120,7 @@ function vHoje(){
   return `<div class="top"><div><p class="muted small" style="margin:0 0 2px">${WD[new Date().getDay()]}, ${dmy(t)}</p><h1>Hoje</h1></div><a class="icon-btn" href="#mais" aria-label="Ajustes e perfil" style="text-decoration:none;color:inherit">⚙</a></div>
   <div class="stack">
   ${!w.length&&!Object.keys(S.dlog).length&&!S.study.items.length&&!S.wlog.length?`<div class="card" style="background:var(--raised)"><h3>Começar</h3><p class="sec small" style="margin:6px 0 12px">Traga seus dados de um backup ou comece do zero registrando o peso e definindo a meta da dieta.</p><div class="row wrap"><button class="btn primary" data-act="import">Importar backup</button><button class="btn" data-act="editgoal">Montar minha dieta</button></div></div>`:""}
-  <div class="card"><div class="card-head"><h3>Dieta</h3><a class="link" href="#dieta">Abrir</a></div><div class="big num" style="margin-bottom:10px">${nf(pr.kcal-tot.k)}<small>kcal restantes de ${nf(pr.kcal)}</small></div>${macroBars(tot,pr)}<div class="row wrap" style="margin-top:12px"><button class="btn primary grow" data-act="addfood">Registrar alimento</button><button class="btn" data-act="addmetric" data-m="peso">Peso${lw&&lw.d===t?" ✓":""}</button></div></div>
+  ${pendCard()}${streakCard()}<div class="card"><div class="card-head"><h3>Dieta</h3><a class="link" href="#dieta">Abrir</a></div><div class="big num" style="margin-bottom:10px">${nf(pr.kcal-tot.k)}<small>kcal restantes de ${nf(pr.kcal)}</small></div>${macroBars(tot,pr)}${spNote(t,pr)}<div class="row wrap" style="margin-top:12px"><button class="btn primary grow" data-act="addfood">Registrar alimento</button><button class="btn" data-act="addmetric" data-m="peso">Peso${lw&&lw.d===t?" ✓":""}</button></div></div>
   <div class="card"><div class="card-head"><h3>Treino</h3><a class="link" href="#treino">Abrir</a></div>
     ${a?`<p style="margin:0 0 10px"><b>${esc(a.name)}</b> em andamento.</p><button class="btn primary block" data-act="resume">Voltar ao treino</button>`:did.length?`<p style="margin:0"><span class="pill good">✓ feito</span> ${did.map(s=>esc(s.name)).join(", ")} · ${sum(did,s=>sum(s.ex,e=>e.sets.length))} séries</p>`:nd?`<div class="row between"><div><div class="tiny muted">Próximo do programa</div><b>${esc(nd.name)}</b><div class="tiny muted">${nd.ex.length} exercícios · cerca de ${dur(estMin(nd))}</div></div><button class="btn primary" data-act="day" data-id="${nd.id}">Ver treino</button></div>`:`<p style="margin:0"><span class="pill good">✓</span> Todos os treinos da semana foram feitos.</p>`}
     <div class="row" style="margin-top:12px;gap:8px"><div class="bar grow"><span style="width:${S.train.prog.days.length?clamp(wk.length/S.train.prog.days.length*100,0,100):0}%;background:var(--prot)"></span></div><span class="tiny muted num">${wk.length} de ${S.train.prog.days.length} na semana</span></div></div>
@@ -1138,7 +1140,9 @@ function vMais(){
   return `<div class="top"><div><h1>Ajustes</h1></div></div><div class="stack">
   <div class="card"><div class="card-head"><h3>Perfil</h3><button class="btn sm" data-act="profile">Editar</button></div><p class="sec small" style="margin:0">${s.sex==="f"?"Feminino":"Masculino"} · ${s.age?s.age+" anos":"idade não informada"} · ${s.height?s.height+" cm":"altura não informada"} · atividade ${nf(s.activity,2)}</p>${f?`<p class="muted tiny" style="margin:6px 0 0">Gasto pela fórmula: ${nf(f)} kcal/dia. Ele só é usado quando ainda não há estimativa pelos seus registros.</p>`:""}</div>
   <div class="card"><div class="card-head"><h3>Treino</h3><button class="btn sm" data-act="trainset">Editar</button></div><p class="sec small" style="margin:0">Aumento de carga sugerido: ${nf(s.inc,1)} kg · descanso entre séries: ${dur(s.rest/60)}</p></div>
-  <div class="card"><h3>Seus dados</h3><p class="sec small" id="syncmsg">Ficam guardados só neste aparelho, dentro do app. Se você apagar o app da tela de início ou limpar os dados do Safari, eles somem: exporte um backup de vez em quando.</p><div class="row wrap"><button class="btn sm" data-act="export">Exportar backup</button><button class="btn sm" data-act="import">Importar backup</button><button class="btn sm ghost danger" data-act="reset">Apagar tudo</button></div></div>
+  <div class="card"><h3>Relatórios</h3><p class="sec small" style="margin:6px 0 10px">Resumo dos últimos 7 dias com o que ajustar, e relatório de cada mês para salvar em PDF.</p><div class="row wrap"><button class="btn sm" data-act="coach">Resumo da semana</button><button class="btn sm" data-act="report">Relatório mensal</button></div></div>
+  <div class="card"><h3>Esportes</h3><p class="sec small" style="margin:6px 0 10px">Calorias do esporte na meta da dieta: ${s.sportPct?(s.sportPct===100?"somando tudo":"somando metade"):"não somadas"} · FC máxima: ${hrMaxV()?hrMaxV().v+" bpm":"não definida"}</p><div class="row wrap"><button class="btn sm" data-act="sportpct">Calorias do esporte</button><button class="btn sm" data-act="hrmax">FC máxima</button></div></div>
+  <div class="card"><h3>Seus dados</h3><p class="sec small" id="syncmsg">Ficam guardados só neste aparelho, dentro do app. Se você apagar o app da tela de início ou limpar os dados do Safari, eles somem: salve um arquivo de backup toda semana. ${s.lastBk?"Último arquivo salvo em "+dmy(s.lastBk)+".":"Você ainda não salvou nenhum arquivo."}</p><div class="row wrap"><button class="btn sm primary" data-act="bkfile">Salvar arquivo de backup</button><button class="btn sm" data-act="export">Copiar como texto</button><button class="btn sm" data-act="import">Importar backup</button><button class="btn sm ghost danger" data-act="reset">Apagar tudo</button></div></div>
   <div class="card"><h3>Sobre os números</h3><p class="sec small" style="margin:6px 0 0">A tabela de alimentos tem ${FOODS.length} itens com valores aproximados por 100 g, no padrão da tabela TACO. Para produtos industrializados, cadastre pelo rótulo em Novo alimento. Buscar online consulta o Open Food Facts, uma base colaborativa: confira os valores com o rótulo.</p><p class="sec small">As metas de calorias seguem um piso de segurança e não substituem acompanhamento de nutricionista ou médico.</p></div></div>`;
 }
 /* ================= ações ================= */
@@ -1223,7 +1227,7 @@ const ACT={
   trainset(){const s=S.settings;openForm("Treino",[{k:"inc",label:"Aumento de carga (kg)",type:"number",def:s.inc,half:true},{k:"rest",label:"Descanso (segundos)",type:"number",def:s.rest,half:true}],v=>{s.inc=clamp(v.inc||2.5,0.5,20);s.rest=clamp(v.rest||120,15,600);closeSheet();commit()})},
   export(){const j=JSON.stringify(toDocs());sheet("Exportar backup",`<p class="sec small" style="margin-top:-4px">Copie o texto e guarde em Notas ou num arquivo. Para restaurar, cole em Importar backup.</p><textarea id="bk" readonly>${esc(j)}</textarea><button class="btn primary block" style="margin-top:10px" data-act="copybk">Copiar</button>`)},
   copybk(){const el=$("#bk");el.select();navigator.clipboard.writeText(el.value).then(()=>toast("Backup copiado."),()=>toast("Selecione o texto e copie manualmente."))},
-  import(){sheet("Importar backup",`<p class="sec small" style="margin-top:-4px">Cole o texto de um backup. Ele substitui todos os dados atuais.</p><textarea id="bki" placeholder="Cole aqui"></textarea><button class="btn primary block" style="margin-top:10px" data-act="importgo">Substituir meus dados</button>`)},
+  import(){sheet("Importar backup",`<p class="sec small" style="margin-top:-4px">Escolha o arquivo salvo ou cole o texto. Ele substitui todos os dados atuais.</p><input type="file" id="bkf" accept=".json,application/json,text/plain" style="margin-bottom:10px;width:100%"><textarea id="bki" placeholder="Cole aqui"></textarea><button class="btn primary block" style="margin-top:10px" data-act="importgo">Substituir meus dados</button>`)},
   importgo(){try{const d=JSON.parse($("#bki").value);if(!d.settings||!d.diet)throw 0;fromDocs(d);closeSheet();commit();toast("Backup restaurado.")}catch(e){toast("Esse texto não é um backup válido.")}},
   reset(){sheet("Apagar tudo?",`<p class="sec">Remove diário alimentar, pesagens, treinos e estudos, e volta ao estado inicial. Não dá para desfazer.</p><div class="row"><button class="btn grow" data-act="close">Cancelar</button><button class="btn danger grow" data-act="reset2">Apagar</button></div>`)},
   reset2(){S=blank();closeSheet();commit()}
@@ -1364,7 +1368,7 @@ function spForm(c,tp){
     {k:"rpe",label:"Esforço (1 a 10)",type:"select",half:true,def:x.rpe??"",options:o10(1,["muito leve","máximo"])},
     {k:"pain",label:"Dor (0 a 10)",type:"select",half:true,def:x.pain??"",options:o10(0,["sem dor","insuportável"])},
     {k:"rec",label:"Recuperação",type:"select",half:true,def:x.rec??"",options:[["","não informar"],[1,"1 · muito cansado"],[2,"2 · cansado"],[3,"3 · normal"],[4,"4 · bem"],[5,"5 · 100% recuperado"]]},
-    {k:"painAt",label:"Onde doeu",def:x.painAt||"",ph:"joelho direito, canela"},
+    {k:"painAt",label:"Onde doeu",def:x.painAt||"",ph:"joelho direito, canela",list:painList()},
     {k:"n",label:"Nome da atividade (opcional)",def:c&&c.n!==spDef(spType(c))[1]?c.n||"":"",ph:"Longão, tiros, jogo de duplas"},
     {k:"note",label:"Observações",type:"textarea",def:x.note||"",ph:"tênis usado, clima, como foi"}
   ],v=>{
@@ -1392,6 +1396,7 @@ function tEsporte(){
   let h=`${types.length>1?seg("spf",[["todas","Tudo"]].concat(types.map(s=>[s[0],s[1]])),f):""}
   <div class="card"><div class="card-head"><h3>Esta semana</h3><span class="muted small">${f==="todas"?"todos os esportes":esc(spDef(f)[1])}</span></div>
     ${spStat(["Sessões",cw.length,""],["Tempo",cw.length?dur(sum(cw,c=>c.min)):"--",""])}${spStat(dist?["Distância",nf(sum(cw,c=>c.km),1),"km"]:["Total registrado",L.length,L.length===1?"sessão":"sessões"],["Calorias",nf(sum(cw,c=>c.kcal)),"kcal"])}${add}</div>`;
+  h+=spGoalCard(f,L,dist);
   if(dist){const wp=L.filter(c=>spPace(c)),best=wp.length?wp.reduce((a,c)=>spPace(c)<spPace(a)?c:a):null,far=L.filter(c=>c.km).reduce((a,c)=>c.km>a.km?c:a);
     h+=`<div class="card"><h3>Recordes</h3>${spStat(["Maior distância",nf(far.km,2),"km · "+dmy(far.d)],best?[bk?"Maior velocidade média":"Melhor pace",bk?nf(spSpeed(best),1):tfmt(spPace(best)),(bk?"km/h":"/km")+" · "+dmy(best.d)]:null)}<div class="small sec num">Total acumulado: <b>${nf(sum(L,c=>c.km),1)} km</b> em ${L.length} ${L.length===1?"sessão":"sessões"}.</div></div>`;
     h+=card("Distância por semana",chart({h:150,labels:wl,full:wf,series:[{name:"Distância",color:"var(--kcal)",type:"bar",vals:wks.map(w=>r1(sum(inW(w),c=>c.km)))}],unit:"km",dec:true}));
@@ -1409,6 +1414,7 @@ function tEsporte(){
     if(has("pain")||has("rpe"))h+=card("Dor e esforço",sub2+chart({h:140,zero:true,labels:lab,full,series:[{name:"Dor (0 a 10)",color:"var(--bad)",type:"bar",vals:col("pain")},{name:"Esforço (1 a 10)",color:"var(--fat)",type:"line",vals:col("rpe")}]}));
     if(has("rec"))h+=card("Recuperação",sub2+chart({h:120,zero:true,labels:lab,full,series:[{name:"Recuperação (1 a 5)",color:"var(--good)",type:"line",vals:col("rec")}]}),"Como seu corpo estava em cada sessão: 1 é muito cansado, 5 é totalmente recuperado.");
   }
+  h+=spZones(f,L)+spPains(L);
   const rows=[...L].reverse().slice(0,60),td=(v,r=1)=>`<td${r?' class="r"':""}>${v}</td>`,dm_=c=>D8(c.d).getDate()+"/"+(D8(c.d).getMonth()+1),n_=(v,d=0)=>v==null?"–":nf(v,d);
   const cols=f==="todas"?[["Data",0,dm_],["Atividade",0,c=>esc(spName(c))],["Tempo",1,c=>tshow(c.min)],["kcal",1,c=>n_(c.kcal)],["Dor",1,c=>n_(c.pain)]]
     :dist?[["Data",0,dm_],["km",1,c=>n_(c.km,2)],["Tempo",1,c=>tshow(c.min)],[bk?"km/h":"Pace",1,c=>spPace(c)?(bk?nf(spSpeed(c),1):tfmt(spPace(c))):"–"],["kcal",1,c=>n_(c.kcal)],["FC",1,c=>n_(c.hr)],["Dor",1,c=>n_(c.pain)]]
@@ -1417,6 +1423,130 @@ function tEsporte(){
   return h;
 }
 Object.assign(ACT,{spedit(el){const c=(S.body.cardio||[]).find(q=>q.id===el.dataset.id);if(c)spForm(c)}});
+/* --- extras: esporte na dieta, meta e alertas de corrida, zonas de FC, dores, pendências, resumo, relatório, arquivos --- */
+const spKcal=d=>sum((S.body.cardio||[]).filter(c=>c.d===d),c=>c.kcal);
+function progAt(d){const b=progAt0(d),pc=S.settings.sportPct||0,k=pc?Math.round(spKcal(d)*pc/100):0;if(!k)return b;return b.style==="keto"?{...b,kcal:b.kcal+k,f:Math.round(b.f+k/9),sport:k}:{...b,kcal:b.kcal+k,c:Math.round(b.c+k/4),sport:k}}
+function spNote(d,pr){const k=spKcal(d);return k?`<p class="muted tiny" style="margin:10px 0 0">Esporte ${d===today()?"hoje":"neste dia"}: <b>${nf(k)} kcal</b> gastas, ${pr.sport?nf(pr.sport)+" somadas à meta":"não somadas à meta"}. <button class="link" style="font-size:12px" data-act="sportpct">Ajustar</button></p>`:""}
+const kmf=v=>nf(v,v%1?1:0);
+function spGoalCard(f,L,dist){
+  if(!dist)return "";
+  const m0=monday(today()),wk=w=>sum(L.filter(c=>c.d>=w&&c.d<addDays(w,7)),c=>c.km),cur=wk(m0),prev=[1,2,3,4].map(i=>wk(addDays(m0,-7*i))),act=prev.filter(v=>v>0).length,avg=sum(prev)/4;
+  const g=(S.settings.spGoal||{})[f],over=act>=2&&cur>avg*1.3,last=L.slice(-3),hurt=last.filter(c=>c.pain>=4).length;
+  const al=x=>`<p class="small" style="margin:10px 0 0;color:var(--warn)">${x}</p>`;
+  return `<div class="card"><div class="card-head"><h3>Meta da semana</h3><button class="btn sm" data-act="spgoal" data-tp="${f}">${g?"Meta: "+kmf(g)+" km":"Definir meta"}</button></div>
+  ${g?`<div class="row between"><div class="big num">${nf(cur,1)}<small>de ${kmf(g)} km</small></div><span class="pill ${cur>=g?"good":""}">${cur>=g?"✓ meta batida":"faltam "+nf(g-cur,1)+" km"}</span></div><div class="bar" style="margin:10px 0"><span style="width:${clamp(cur/g*100,0,100)}%;background:var(--kcal)"></span></div>`:`<p class="sec small" style="margin:0 0 8px">Defina quantos km quer fazer por semana para acompanhar aqui.</p>`}
+  <div class="small sec num">Média das últimas 4 semanas: <b>${nf(avg,1)} km</b>${act>=2?` · teto sugerido para esta semana: <b>${nf(avg*1.1,1)} km</b>`:""}</div>
+  ${over?al(`Atenção: esta semana já está ${nf((cur/avg-1)*100)}% acima da sua média de 4 semanas. Subir o volume de uma vez é um fator de risco para lesão; a regra prática é aumentar cerca de 10% por semana.`):""}
+  ${hurt>=2?al(`Dor 4 ou mais em ${hurt} das últimas ${last.length} sessões. Vale reduzir volume ou intensidade e, se continuar, procurar avaliação.`):""}</div>`;
+}
+function hrMaxV(){const s=S.settings;if(s.hrMax)return {v:s.hrMax,src:"definida por você"};const m=Math.max(0,...(S.body.cardio||[]).map(c=>c.hrx||0));if(m>=150)return {v:m,src:"maior FC máxima que você registrou"};if(s.age)return {v:220-s.age,src:"220 menos a idade"};return m?{v:m,src:"maior FC máxima que você registrou"}:null}
+const ZN=[["Z1","recuperação",0,"var(--mute)"],["Z2","leve",60,"var(--kcal)"],["Z3","moderada",70,"var(--carb)"],["Z4","forte",80,"var(--fat)"],["Z5","máxima",90,"var(--bad)"]];
+const hrZone=(hr,mx)=>{const p=hr/mx*100;return p>=90?4:p>=80?3:p>=70?2:p>=60?1:0};
+function spZones(f,L){
+  if(f==="todas")return "";const from=addDays(today(),-29),ss=L.filter(c=>c.hr&&c.d>=from),mx=hrMaxV();if(!ss.length||!mx)return "";
+  const z=[0,0,0,0,0];ss.forEach(c=>z[hrZone(c.hr,mx.v)]+=c.min);const tot=sum(z)||1,lim=i=>Math.round(mx.v*ZN[i][2]/100);
+  return `<div class="card"><div class="card-head"><h3>Zonas de batimento</h3><button class="btn sm" data-act="hrmax">FC máx: ${mx.v}</button></div><div class="muted tiny" style="margin-bottom:4px">tempo nos últimos 30 dias</div>
+  ${ZN.map((n,i)=>`<div style="padding:7px 0;border-top:1px solid var(--line)"><div class="row between small"><span><b>${n[0]}</b> ${n[1]} <span class="muted tiny num">${i===0?"até "+(lim(1)-1):i===4?lim(4)+" ou mais":lim(i)+" a "+(lim(i+1)-1)} bpm</span></span><span class="num"><b>${z[i]?dur(z[i]):"--"}</b> · ${nf(z[i]/tot*100)}%</span></div><div class="bar" style="margin-top:5px"><span style="width:${z[i]/tot*100}%;background:${n[3]}"></span></div></div>`).join("")}
+  <p class="muted tiny" style="margin:8px 0 0">Cada sessão entra inteira na zona da sua FC média, então é uma aproximação; o relógio mostra o tempo exato por zona. FC máxima usada: ${mx.v} bpm (${mx.src}).</p></div>`;
+}
+const PAINS=["joelho direito","joelho esquerdo","canela","panturrilha","tornozelo","pé","quadril","lombar","coxa posterior","ombro","cotovelo","punho"];
+function painGroups(L){const g={};L.filter(c=>c.pain>0&&c.painAt).forEach(c=>c.painAt.split(/[,;\/]| e /).map(x=>x.trim()).filter(Boolean).forEach(p=>{const o=(g[norm(p)]??={n:p,c:0,s:0,last:""});o.c++;o.s+=c.pain;if(c.d>o.last)o.last=c.d}));return Object.values(g).sort((a,b)=>b.c-a.c||b.s-a.s)}
+const painList=()=>[...new Set([...painGroups(S.body.cardio||[]).map(x=>x.n),...PAINS])];
+function spPains(L){const r=painGroups(L);if(!r.length)return "";
+  return `<div class="card"><div class="card-head"><h3>Dores recorrentes</h3><span class="muted small">por local</span></div><table class="t num"><thead><tr><th>Local</th><th class="r">Vezes</th><th class="r">Dor média</th><th class="r">Última</th></tr></thead><tbody>${r.slice(0,8).map(x=>`<tr><td>${esc(x.n)}</td><td class="r">${x.c}</td><td class="r">${nf(x.s/x.c,1)}</td><td class="r">${dmy(x.last)}</td></tr>`).join("")}</tbody></table><p class="muted tiny" style="margin:8px 0 0">Conta as sessões em que você marcou dor acima de zero e escreveu o local. Um local que se repete merece atenção antes de aumentar o volume.</p></div>`}
+/* pendências e sequências na tela Hoje */
+function streak(fn){const t=today();let n=0;for(let d=t,i=0;i<400;d=addDays(d,-1),i++){if(fn(d))n++;else if(d!==t)break}return n}
+function wkStreak(fn){let n=0,m=monday(today());for(let i=0;i<104;i++,m=addDays(m,-7)){if(fn(m,addDays(m,6)))n++;else if(i>0)break}return n}
+const hasData=()=>!!(S.body.w.length||Object.keys(S.dlog).length||S.wlog.length||(S.body.cardio||[]).length);
+function pendCard(){
+  if(!hasData())return "";const t=today(),p=[],w=weights(),due=errDue().length,lb=S.settings.lastBk;
+  if(recScore(t)==null)p.push(["Registrar como você acordou","sono, dor muscular e energia","wake",""]);
+  if(w.length&&w[w.length-1].d!==t)p.push(["Pesar hoje","última pesagem em "+dmy(w[w.length-1].d),"addmetric",'data-m="peso"']);
+  if(w.length&&nextCheckin()<=t)p.push(["Check-in semanal da dieta","revisar a meta de calorias","checkin",""]);
+  if(due)p.push([due+(due===1?" erro":" erros")+" para revisar","caderno de erros","errrev",""]);
+  if(!lb||diffDays(lb,t)>=7)p.push(["Salvar um backup",lb?"último em "+dmy(lb):"você ainda não salvou nenhum arquivo","bkfile",""]);
+  if(!p.length)return "";
+  return `<div class="card"><div class="card-head"><h3>Pendências</h3><span class="muted small">${p.length}</span></div><div class="list">${p.map(x=>`<div class="li"><span class="grow">${x[0]}<br><span class="tiny muted">${x[1]}</span></span><button class="btn sm" data-act="${x[2]}" ${x[3]}>Fazer</button></div>`).join("")}</div></div>`;
+}
+function streakCard(){
+  if(!hasData()&&!S.study.items.length)return "";const dy=S.body.day||{},ca=S.body.cardio||[];
+  const v=[[streak(d=>dayTot(d).n>0),"dias de dieta"],[streak(d=>dy[d]&&dy[d].sleep!=null),"dias de sono"],[streak(d=>S.study.items.some(i=>isStudy(i)&&i.date===d&&i.done)),"dias de estudo"],[wkStreak((a,b)=>S.wlog.some(s=>s.d>=a&&s.d<=b)||ca.some(c=>c.d>=a&&c.d<=b)),"semanas de treino"]];
+  return `<div class="card"><div class="card-head"><h3>Sequências</h3><button class="link" data-act="coach">Resumo da semana</button></div><div class="f4 num" style="text-align:center">${v.map(x=>`<div><div class="big" style="font-size:22px">${x[0]}</div><div class="tiny muted">${x[1]}</div></div>`).join("")}</div></div>`;
+}
+/* agregados de um período (resumo semanal e relatório mensal) */
+function period(a,end){
+  const t=today();if(end>t)end=t;const days=[];for(let d=a;d<=end;d=addDays(d,1))days.push(d);
+  const lg=days.filter(d=>dayTot(d).k>0),av=k=>lg.length?sum(lg,d=>dayTot(d)[k])/lg.length:null,dy=S.body.day||{},sl=days.map(d=>dy[d]&&dy[d].sleep).filter(v=>v!=null),rc=days.map(recScore).filter(v=>v!=null);
+  const ws=S.wlog.filter(s=>s.d>=a&&s.d<=end),sp=(S.body.cardio||[]).filter(c=>c.d>=a&&c.d<=end),st=S.study.items.filter(i=>isStudy(i)&&i.date>=a&&i.date<=end&&(i.date<t||i.done)),m=trendMap(),tw=days.filter(d=>m[d]!=null);
+  const bySp=SPORTS.map(s=>{const x=sp.filter(c=>spType(c)===s[0]);return {n:s[1],c:x.length,km:sum(x,c=>c.km),min:sum(x,c=>c.min),kcal:sum(x,c=>c.kcal)}}).filter(x=>x.c);
+  const bs={};st.forEach(i=>{const o=(bs[i.subject]??={p:0,d:0});o.p+=iMin(i);if(i.done)o.d+=iMin(i)});
+  return {a,end,n:days.length,nLog:lg.length,kcal:av("k"),prot:av("p"),carb:av("c"),fat:av("f"),goalK:lg.length?sum(lg,d=>progAt(d).kcal)/lg.length:progAt(end).kcal,goalP:lg.length?sum(lg,d=>progAt(d).p)/lg.length:progAt(end).p,
+    w0:tw.length?m[tw[0]]:null,w1:tw.length?m[tw[tw.length-1]]:null,nSess:ws.length,sets:sum(ws,s=>sum(s.ex,e=>e.sets.length)),vol:sum(ws,s=>sum(s.ex,e=>sum(e.sets,q=>q.kg*q.r))),
+    sp,bySp,spKm:sum(sp,c=>c.km),spMin:sum(sp,c=>c.min),spK:sum(sp,c=>c.kcal),nSl:sl.length,sleep:sl.length?sum(sl)/sl.length:null,rec:rc.length?sum(rc)/rc.length:null,load:sum(days,dayLoad)/days.length,
+    stP:sum(st,iMin),stD:sum(st.filter(i=>i.done),iMin),subj:Object.entries(bs).sort((x,y)=>y[1].d-x[1].d)};
+}
+function coachTips(w){
+  const tp=[],need=S.settings.sleepNeed||8,pd=S.train.prog.days.length,runs=(S.body.cardio||[]).filter(c=>spType(c)==="corrida"),m0=monday(today()),wkm=x=>sum(runs.filter(c=>c.d>=x&&c.d<addDays(x,7)),c=>c.km),avg=sum([1,2,3,4].map(i=>wkm(addDays(m0,-7*i))))/4,hurt=w.sp.filter(c=>c.pain>=4).length;
+  if(w.nLog<5)tp.push(`Dieta registrada em ${w.nLog} de ${w.n} dias. Com 5 ou mais dias a estimativa do seu gasto fica confiável.`);
+  else{const d=(w.kcal/w.goalK-1)*100;if(Math.abs(d)>10)tp.push(`Calorias ${d>0?"acima":"abaixo"} da meta: média de ${nf(w.kcal)} contra ${nf(w.goalK)} kcal (${d>0?"+":""}${nf(d)}%).`);
+    if(w.prot<w.goalP*0.9)tp.push(`Proteína abaixo da meta: média de ${nf(w.prot)} g contra ${nf(w.goalP)} g. Uma porção a mais por dia fecha a diferença.`)}
+  if(w.sleep!=null&&w.sleep<need-0.5)tp.push(`Sono médio de ${nf(w.sleep,1)} h, ${nf(need-w.sleep,1)} h abaixo da sua meta de ${nf(need,1)} h. É o item que mais pesa na sua nota de recuperação.`);
+  else if(w.nSl<4)tp.push(`Sono registrado em ${w.nSl} de ${w.n} dias. Sem ele a nota de recuperação não é calculada.`);
+  if(pd&&w.nSess<pd)tp.push(`Musculação: ${w.nSess} de ${pd} treinos do programa nos últimos 7 dias.`);
+  if(avg>0&&wkm(m0)>avg*1.3)tp.push(`Corrida: volume desta semana ${nf((wkm(m0)/avg-1)*100)}% acima da média de 4 semanas. Segure o aumento em cerca de 10% por semana.`);
+  if(hurt>=2)tp.push(`Você marcou dor 4 ou mais em ${hurt} sessões de esporte. Reduza a carga e observe se o local se repete.`);
+  if(w.rec!=null&&w.rec<50)tp.push(`Recuperação média de ${nf(w.rec)} de 100. Uma semana mais leve tende a render mais do que insistir na carga.`);
+  if(w.stP&&w.stD/w.stP<0.7)tp.push(`Estudos: ${nf(w.stD/w.stP*100)}% do planejado cumprido (${dur(w.stD)} de ${dur(w.stP)}). Planeje menos blocos ou blocos menores para a meta ser realista.`);
+  if(errDue().length)tp.push(`${errDue().length} ${errDue().length===1?"erro pendente":"erros pendentes"} de revisão no caderno de erros.`);
+  if(!tp.length)tp.push("Semana consistente: dieta, sono, treino e estudos dentro do planejado. Mantenha o plano.");
+  return tp;
+}
+const dW=w=>w.w0!=null&&w.w1!=null?w.w1-w.w0:null,sg=v=>(v>0?"+":"")+nf(v,1);
+function periodText(w,title){
+  const L=[title+" ("+dmy(w.a)+" a "+dmy(w.end)+")","",
+    "DIETA: "+w.nLog+" de "+w.n+" dias registrados"+(w.nLog?"; média "+nf(w.kcal)+" kcal (meta "+nf(w.goalK)+"), proteína "+nf(w.prot)+" g (meta "+nf(w.goalP)+"), carboidrato "+nf(w.carb)+" g, gordura "+nf(w.fat)+" g":""),
+    "PESO (tendência): "+(w.w1!=null?nf(w.w0,1)+" kg para "+nf(w.w1,1)+" kg ("+sg(dW(w))+" kg)":"sem pesagens"),
+    "MUSCULAÇÃO: "+w.nSess+" treinos, "+w.sets+" séries, "+nf(w.vol)+" kg de volume",
+    "ESPORTES: "+(w.bySp.length?w.bySp.map(x=>x.n+" "+x.c+"x, "+dur(x.min)+(x.km?", "+nf(x.km,1)+" km":"")+(x.kcal?", "+nf(x.kcal)+" kcal":"")).join("; "):"nenhum registro"),
+    "SONO: "+(w.sleep!=null?"média "+nf(w.sleep,1)+" h em "+w.nSl+" noites (meta "+nf(S.settings.sleepNeed||8,1)+" h)":"sem registro")+(w.rec!=null?"; recuperação média "+nf(w.rec)+"/100":""),
+    "ESTUDOS: "+dur(w.stD)+" feitos de "+dur(w.stP)+" planejados"+(w.subj.length?" ("+w.subj.slice(0,6).map(([k,v])=>k+" "+dur(v.d)).join(", ")+")":"")];
+  return L.join("\n");
+}
+const kv=(a,b)=>`<div class="row between small" style="padding:7px 0;border-top:1px solid var(--line)"><span class="sec">${a}</span><b class="num" style="text-align:right">${b}</b></div>`;
+function periodCards(w){
+  const need=S.settings.sleepNeed||8;
+  return `<div class="card"><h3>Dieta</h3>${kv("Dias registrados",w.nLog+" de "+w.n)}${w.nLog?kv("Calorias (média)",nf(w.kcal)+" de "+nf(w.goalK)+" kcal")+kv("Proteína (média)",nf(w.prot)+" de "+nf(w.goalP)+" g")+kv("Carboidrato · gordura",nf(w.carb)+" g · "+nf(w.fat)+" g"):""}${kv("Peso (tendência)",w.w1!=null?nf(w.w1,1)+" kg ("+sg(dW(w))+")":"sem pesagens")}</div>
+  <div class="card"><h3>Treino</h3>${kv("Musculação",w.nSess+(w.nSess===1?" treino":" treinos")+" · "+w.sets+" séries")}${kv("Volume levantado",nf(w.vol)+" kg")}${w.bySp.map(x=>kv(x.n,x.c+"x · "+dur(x.min)+(x.km?" · "+nf(x.km,1)+" km":"")+(x.kcal?" · "+nf(x.kcal)+" kcal":""))).join("")||kv("Esportes","nenhum registro")}${kv("Carga média por dia",nf(w.load))}</div>
+  <div class="card"><h3>Sono e recuperação</h3>${kv("Sono (média)",w.sleep!=null?nf(w.sleep,1)+" h · meta "+nf(need,1)+" h":"sem registro")}${kv("Noites registradas",w.nSl+" de "+w.n)}${kv("Recuperação (média)",w.rec!=null?nf(w.rec)+" de 100":"sem registro")}</div>
+  <div class="card"><h3>Estudos</h3>${kv("Feito",dur(w.stD)+" de "+dur(w.stP))}${kv("Cumprimento",w.stP?nf(w.stD/w.stP*100)+"%":"--")}${w.subj.slice(0,6).map(([k,v])=>kv(esc(k),dur(v.d)+" de "+dur(v.p))).join("")}</div>`;
+}
+function vCoach(){const t=today(),w=period(addDays(t,-6),t),tips=coachTips(w);window._ctx="Uso o app Tríade para dieta, treino, sono e estudos. Analise a minha semana abaixo e me diga as 3 mudanças de maior impacto para a próxima semana, com números.\n\n"+periodText(w,"Resumo dos últimos 7 dias")+"\n\nPONTOS QUE O APP JÁ APONTOU:\n"+tips.map(x=>"- "+x).join("\n");
+  return backHead("Resumo da semana")+`<div class="stack"><div class="card"><div class="card-head"><h3>O que ajustar</h3><span class="muted small">${dmy(w.a)} a ${dmy(w.end)}</span></div>${tips.map(x=>`<p class="small" style="margin:0;padding:8px 0;border-top:1px solid var(--line)">${esc(x)}</p>`).join("")}<p class="muted tiny" style="margin:8px 0 10px">Regras fixas aplicadas aos seus registros dos últimos 7 dias. Para uma análise mais completa, copie o resumo e cole numa conversa com o Claude.</p><button class="btn primary block" data-act="ctxcopy">Copiar resumo para o Claude</button></div>${periodCards(w)}</div>`}
+let repM=null;
+function vReport(){const t=today();repM??=t.slice(0,7);const a=repM+"-01",dt=D8(a),end=iso(new Date(dt.getFullYear(),dt.getMonth()+1,0)),w=period(a,end),nm=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][dt.getMonth()]+" de "+dt.getFullYear();
+  window._ctx=periodText(w,"Relatório Tríade · "+nm);
+  return backHead("Relatório mensal")+`<div class="stack"><div class="row between noprint"><button class="icon-btn" data-act="repnav" data-n="-1" aria-label="Mês anterior">‹</button><b>${nm}</b><button class="icon-btn" data-act="repnav" data-n="1" aria-label="Próximo mês" ${repM>=t.slice(0,7)?"disabled":""}>›</button></div>
+  <div class="card"><h3>Tríade · ${nm}</h3><p class="sec small" style="margin:4px 0 0">${dmy(w.a)} a ${dmy(w.end)} · ${w.n} dias</p></div>${periodCards(w)}
+  <div class="row noprint"><button class="btn grow" data-act="ctxcopy">Copiar texto</button><button class="btn primary grow" data-act="repprint">Salvar em PDF</button></div></div>`}
+async function shareFile(name,text,type){
+  const blob=new Blob([text],{type});
+  try{const f=new File([blob],name,{type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return true}}catch(e){if(e&&e.name==="AbortError")return false}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);return true;
+}
+document.addEventListener("change",ev=>{const el=ev.target;if(el.id==="bkf"&&el.files&&el.files[0])el.files[0].text().then(x=>{$("#bki").value=x;toast("Arquivo carregado. Toque em Substituir meus dados.")})});
+Object.assign(ACT,{
+  sportpct(){openForm("Calorias do esporte na dieta",[{k:"p",label:"Quanto somar à meta de calorias do dia",type:"select",def:S.settings.sportPct||0,options:[[0,"Não somar (recomendado)"],[50,"Somar metade"],[100,"Somar tudo"]],help:"O gasto usado na sua meta é estimado pelo seu peso e pelo que você come, então já inclui, em média, os seus treinos. Somar tudo pode contar o mesmo gasto duas vezes, e a caloria do relógio é uma estimativa."}],v=>{S.settings.sportPct=+v.p;closeSheet();commit()})},
+  spgoal(el){const f=el.dataset.tp,g=S.settings.spGoal??={};openForm("Meta semanal · "+spDef(f)[1],[{k:"km",label:"Quilômetros por semana",type:"number",def:g[f]??"",help:"Deixe em branco para remover a meta."}],v=>{if(v.km>0)g[f]=Math.min(v.km,2000);else delete g[f];closeSheet();commit()})},
+  hrmax(){const m=hrMaxV();openForm("Frequência cardíaca máxima",[{k:"v",label:"FC máxima (bpm)",type:"number",def:S.settings.hrMax??"",ph:m?String(m.v):"190",help:"Use o maior valor que você já viu num esforço máximo. Em branco, o app usa a maior FC máxima registrada ou 220 menos a idade."}],v=>{S.settings.hrMax=v.v>=100&&v.v<=240?Math.round(v.v):null;closeSheet();commit()})},
+  coach(){go(vCoach)},report(){go(vReport)},
+  repnav(el){const d=D8(repM+"-01");d.setMonth(d.getMonth()+ +el.dataset.n);repM=iso(d).slice(0,7);render()},
+  repprint(){window.print()},
+  ctxcopy(){navigator.clipboard.writeText(window._ctx||"").then(()=>toast("Copiado."),()=>toast("Não deu para copiar."))},
+  async bkfile(){flushNow();const ok=await shareFile("triade-backup-"+today()+".json",JSON.stringify(toDocs()),"application/json");if(ok){S.settings.lastBk=today();commit();toast("Backup gerado. Guarde o arquivo em Arquivos ou no iCloud.")}},
+  sics(){const t=today(),it=sortBy(S.study.items.filter(i=>i.date>=t),i=>i.date+i.s);if(!it.length){toast("Não há blocos futuros no plano.");return}
+    const z=(d,h)=>d.replace(/-/g,"")+"T"+h.replace(":","")+"00",e=s=>String(s||"").replace(/([,;\\])/g,"\\$1").replace(/\n/g," ");
+    shareFile("triade-estudos.ics","BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Triade//PT\r\n"+it.map(i=>"BEGIN:VEVENT\r\nUID:"+i.id+"@triade\r\nDTSTAMP:"+z(t,"00:00")+"Z\r\nDTSTART:"+z(i.date,i.s)+"\r\nDTEND:"+z(i.date,i.e)+"\r\nSUMMARY:"+e(i.subject+(i.task?" - "+i.task:""))+"\r\nEND:VEVENT\r\n").join("")+"END:VCALENDAR\r\n","text/calendar")}
+});
 /* --- ações --- */
 Object.assign(ACT,{
   start(el){closeSheet();if(S.train.active){go(vWorkout);return}const d=S.train.prog.days.find(x=>x.id===el.dataset.id);if(d)readySheet(d)},
