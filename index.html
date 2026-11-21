@@ -117,7 +117,7 @@ textarea{min-height:110px;font-size:13px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .f4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 104px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13.5px;font-weight:500;z-index:40;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 104px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:18px;font-size:13.5px;font-weight:500;z-index:40;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 /* gráficos */
 .chart{position:relative;touch-action:pan-y}
@@ -157,6 +157,9 @@ textarea{min-height:110px;font-size:13px}
 .hr .h{font-size:12.5px;color:var(--mute);padding-top:3px}
 .food{display:flex;justify-content:space-between;gap:10px;padding:5px 0;cursor:pointer}
 .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--raised);color:var(--ink2);white-space:nowrap}
+.opt{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:none;border-radius:14px;padding:11px 14px;line-height:1.3}
+.opt small{display:block;color:var(--mute);font-size:12.5px}
+.opt[aria-pressed="true"]{border-color:var(--ink);background:var(--raised)}
 .tag.prova{background:var(--ink);color:var(--bg)}
 .tag.ic{color:var(--violet)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -504,7 +507,7 @@ function blank(){
   return {
     settings:{v:1,sex:"m",age:null,height:null,activity:1.55,inc:2.5,rest:120,checkinDow:1},
     diet:{goal:{type:"manter",target:null,rate:0,start:t,startW:null},
-      prog:{start:t,kcal:2000,p:150,c:200,f:67,style:"bal",pkg:2,tdee:2500,src:"valores iniciais, ajuste em Editar meta"},
+      prog:{start:t,kcal:2000,p:150,c:200,f:67,style:"bal",pkg:2,tdee:2500,src:"valores provisórios: toque em Nova meta para calcular os seus"},
       hist:[],lastCheckin:t,foods:[],recipes:[]},
     dlog:{},
     body:{w:[],bf:[],steps:[]},
@@ -677,14 +680,16 @@ function tdeeEst(){
   const raw=avg-dk*7700/span,c=clamp(logged.length/14,0,1)*0.7;
   return {v:Math.round(clamp(prior+c*(raw-prior),1200,6000)),held:false,n:logged.length,nW,avg:Math.round(avg),dk};
 }
-function calcTargets(tdee,w,goal,style,pkg){
+function refWeight(w,o={}){const b=sortBy(S.body.bf,x=>x.d).pop(),bf=o.bf??(b?b.v:null),sex=o.sex??S.settings.sex,h=o.height??S.settings.height;if(bf)return Math.min(w,w*(1-bf/100)/(sex==="f"?0.75:0.85));if(h)return Math.min(w,25*(h/100)**2);return w}
+function calcTargets(tdee,w,goal,style,pkg,o={}){
+  const ref=refWeight(w,o),sexo=o.sex??S.settings.sex;
   const kgwk=goal.type==="manter"?0:goal.rate/100*w;let kcal=tdee+kgwk*7700/7,lim=false;
-  const floor=S.settings.sex==="f"?1200:1500,lo=Math.max(floor,tdee*0.6),hi=tdee*1.2;
+  const floor=sexo==="f"?1200:1500,lo=Math.max(floor,tdee*0.6),hi=tdee*1.2;
   if(kcal<lo){kcal=lo;lim=true}if(kcal>hi){kcal=hi;lim=true}
-  kcal=Math.round(kcal);let p=Math.round(pkg*w);if(p*4>kcal*0.65)p=Math.round(kcal*0.65/4);
+  kcal=Math.round(kcal);let p=Math.round(pkg*ref);if(p*4>kcal*0.65)p=Math.round(kcal*0.65/4);
   let c,f;const rest=kcal-p*4;
   if(style==="keto"){c=Math.min(45,Math.round(rest*0.25/4));f=Math.round((rest-c*4)/9)}
-  else{const fs={bal:0.4,lowcarb:0.65,lowfat:0.25}[style]||0.4;f=Math.round(rest*fs/9);c=Math.round((rest-f*9)/4)}
+  else{const fs={bal:0.4,lowcarb:0.65,lowfat:0.25}[style]||0.4;f=Math.round(rest*fs/9);const mf=Math.round(0.6*ref);if(f<mf&&mf*9<=rest)f=mf;c=Math.round((rest-f*9)/4)}
   return {kcal,p,c:Math.max(0,c),f:Math.max(0,f),lim};
 }
 function nextCheckin(){let d=addDays(S.diet.lastCheckin||today(),1);while(D8(d).getDay()!==S.settings.checkinDow)d=addDays(d,1);return d}
@@ -755,7 +760,7 @@ function dPlano(){
     <div class="f3" style="text-align:center"><div><div class="big num">${nf(g.target,1)}<small>kg</small></div><div class="tiny muted">peso alvo</div></div><div><div class="big num">${g.type==="manter"?"0":nf(kg,2)}<small>kg</small></div><div class="tiny muted">por semana</div></div><div><div class="big num">${g.type==="manter"?"0":nf(g.rate,1)}<small>%</small></div><div class="tiny muted">por semana</div></div></div>
     ${fc?`<p class="sec small" style="margin:12px 0 0">${fc.done?"Você já chegou ao peso alvo.":`Nesse ritmo, a previsão de chegada é ${dmy(fc.date)} de ${D8(fc.date).getFullYear()} (cerca de ${fc.wk} semanas).`}</p>`:""}
     ${g.type==="perder"&&g.rate<-1?`<p class="small" style="margin:8px 0 0"><span class="pill warn">ritmo alto</span> Acima de 1% do peso por semana a perda de massa magra tende a aumentar. Vale alinhar com quem acompanha sua dieta.</p>`:""}
-    <div class="row wrap" style="margin-top:12px"><button class="btn sm" data-act="editgoal">Editar meta</button><button class="btn sm" data-act="cidow">Dia do check-in</button></div></div>
+    <div class="row wrap" style="margin-top:12px"><button class="btn sm primary" data-act="editgoal">Nova meta</button><button class="btn sm" data-act="cidow">Dia do check-in</button></div></div>
   <div class="card"><h3>Histórico de programas</h3>${S.diet.hist.length?`<table class="t num"><thead><tr><th>Início</th><th class="r">kcal</th><th class="r">P</th><th class="r">C</th><th class="r">G</th><th class="r">Gasto</th></tr></thead><tbody>${sortBy(S.diet.hist,x=>x.start).reverse().map(p=>`<tr><td>${dmy(p.start)}</td><td class="r">${p.kcal}</td><td class="r">${p.p}</td><td class="r">${p.c}</td><td class="r">${p.f}</td><td class="r">${nf(p.tdee)}</td></tr>`).join("")}</tbody></table>`:`<p class="empty">O primeiro check-in aparece aqui.</p>`}</div>`;
 }
 /* ---------- detalhes com gráfico ---------- */
@@ -1106,7 +1111,7 @@ function vHoje(){
   const t=today(),tot=dayTot(t),pr=S.diet.prog,a=S.train.active,nd=nextDay(),wk=weekSess(),it=sortBy(S.study.items.filter(i=>i.date===t),i=>i.s),st=it.filter(isStudy),ex=exams().filter(i=>i.date>=t).slice(0,4),w=weights(),lw=w[w.length-1],did=S.wlog.filter(s=>s.d===t);
   return `<div class="top"><div><p class="muted small" style="margin:0 0 2px">${WD[new Date().getDay()]}, ${dmy(t)}</p><h1>Hoje</h1></div><a class="icon-btn" href="#mais" aria-label="Ajustes e perfil" style="text-decoration:none;color:inherit">⚙</a></div>
   <div class="stack">
-  ${!w.length&&!Object.keys(S.dlog).length&&!S.study.items.length&&!S.wlog.length?`<div class="card" style="background:var(--raised)"><h3>Começar</h3><p class="sec small" style="margin:6px 0 12px">Traga seus dados de um backup ou comece do zero registrando o peso e definindo a meta da dieta.</p><div class="row wrap"><button class="btn primary" data-act="import">Importar backup</button><button class="btn" data-act="editgoal">Definir meta</button></div></div>`:""}
+  ${!w.length&&!Object.keys(S.dlog).length&&!S.study.items.length&&!S.wlog.length?`<div class="card" style="background:var(--raised)"><h3>Começar</h3><p class="sec small" style="margin:6px 0 12px">Traga seus dados de um backup ou comece do zero registrando o peso e definindo a meta da dieta.</p><div class="row wrap"><button class="btn primary" data-act="import">Importar backup</button><button class="btn" data-act="editgoal">Montar minha dieta</button></div></div>`:""}
   <div class="card"><div class="card-head"><h3>Dieta</h3><a class="link" href="#dieta">Abrir</a></div><div class="big num" style="margin-bottom:10px">${nf(pr.kcal-tot.k)}<small>kcal restantes de ${nf(pr.kcal)}</small></div>${macroBars(tot,pr)}<div class="row wrap" style="margin-top:12px"><button class="btn primary grow" data-act="addfood">Registrar alimento</button><button class="btn" data-act="addmetric" data-m="peso">Peso${lw&&lw.d===t?" ✓":""}</button></div></div>
   <div class="card"><div class="card-head"><h3>Treino</h3><a class="link" href="#treino">Abrir</a></div>
     ${a?`<p style="margin:0 0 10px"><b>${esc(a.name)}</b> em andamento.</p><button class="btn primary block" data-act="resume">Voltar ao treino</button>`:did.length?`<p style="margin:0"><span class="pill good">✓ feito</span> ${did.map(s=>esc(s.name)).join(", ")} · ${sum(did,s=>sum(s.ex,e=>e.sets.length))} séries</p>`:nd?`<div class="row between"><div><div class="tiny muted">Próximo do programa</div><b>${esc(nd.name)}</b><div class="tiny muted">${nd.ex.length} exercícios · cerca de ${dur(estMin(nd))}</div></div><button class="btn primary" data-act="day" data-id="${nd.id}">Ver treino</button></div>`:`<p style="margin:0"><span class="pill good">✓</span> Todos os treinos da semana foram feitos.</p>`}
@@ -1245,6 +1250,74 @@ document.addEventListener("pointerleave",ev=>{if(ev.target.classList&&ev.target.
 window.addEventListener("hashchange",onRoute);
 $("#nav").addEventListener("click",ev=>{const a=ev.target.closest("a");if(a&&a.getAttribute("href")===(location.hash||"#hoje")){ev.preventDefault();onRoute()}});
 /* ================= início ================= */
+
+/* ================= assistente de meta ================= */
+let wz=null;
+const WZ_DAILY=[["sed","Sedentário","sentado quase o dia todo, poucos passos"],["leve","Leve","aulas ou escritório, com deslocamentos a pé"],["mod","Moderado","em pé ou andando boa parte do dia"],["ativo","Muito ativo","trabalho físico ou plantões em movimento"]];
+const WZ_RATE={perder:[[0.25,"Leve","mais fácil de manter, preserva mais massa magra"],[0.5,"Moderado","equilíbrio entre velocidade e conforto"],[0.75,"Acelerado","exige mais disciplina e sono em dia"],[1,"Agressivo","limite recomendado, por períodos curtos"]],ganhar:[[0.1,"Lento","ganho mais limpo, pouca gordura junto"],[0.25,"Moderado","bom para a maioria"],[0.5,"Rápido","mais gordura junto com o músculo"]]};
+const WZ_STYLE=[["bal","Equilibrada","carboidrato e gordura divididos; a mais flexível"],["lowcarb","Low carb","menos carboidrato, mais gordura"],["lowfat","Low fat","menos gordura, mais carboidrato; boa para treinar pesado"],["keto","Cetogênica","até 45 g de carboidrato por dia"]];
+const WZ_PROT=[[1.6,"Moderada","1,6 g por kg de referência"],[2,"Alta","2,0 g por kg; padrão para quem treina força"],[2.4,"Muito alta","2,4 g por kg; ajuda na saciedade em déficit"]];
+function wzStart(){const s=S.settings,w=weights().pop(),b=sortBy(S.body.bf,x=>x.d).pop(),g=S.diet.goal,pr=S.diet.prog;
+  wz={step:0,a:{sex:s.sex,age:s.age||"",height:s.height||"",w:w?w.kg:"",bf:b?b.v:"",daily:"leve",str:3,car:0,type:g.type==="manter"&&!g.target?"perder":g.type,target:g.target||"",rate:0.5,style:pr.style||"bal",prot:WZ_PROT.some(x=>x[0]===pr.pkg)?pr.pkg:2}};closeSheet();go(vWizard)}
+function wzKeep(){for(const k of ["age","height","w","bf","str","car","target"]){const el=$("#wz_"+k);if(el)wz.a[k]=el.value}}
+const wzN=k=>num(wz.a[k]);
+function wzOpts(k,opts){return `<div class="stack" style="gap:8px">${opts.map(o=>`<button class="opt" data-act="wzopt" data-k="${k}" data-v="${o[0]}" aria-pressed="${String(wz.a[k])===String(o[0])}"><b>${o[1]}</b><small>${o[2]}</small></button>`).join("")}</div>`}
+const wzIn=(k,label,ph,help)=>`<div class="field"><label for="wz_${k}">${label}</label><input id="wz_${k}" type="text" inputmode="decimal" value="${esc(wz.a[k])}" placeholder="${ph||""}">${help?`<span class="help">${help}</span>`:""}</div>`;
+function wzCalc(){
+  const a=wz.a,w=wzN("w"),h=wzN("height"),age=wzN("age"),bf=wzN("bf"),lbm=bf?w*(1-bf/100):null;
+  const bmr=lbm?370+21.6*lbm:10*w+6.25*h-5*age+(a.sex==="f"?-161:5);
+  const fac=Math.min(1.95,{sed:1.2,leve:1.3,mod:1.4,ativo:1.5}[a.daily]+0.035*(wzN("str")||0)+0.03*(wzN("car")||0)),tdee=Math.round(bmr*fac);
+  const rate=a.type==="perder"?-(+a.rate):a.type==="ganhar"?+a.rate:0,goal={type:a.type,target:a.type==="manter"?w:wzN("target"),rate};
+  const o={bf,sex:a.sex,height:h},n=calcTargets(tdee,w,goal,a.style,+a.prot,o);
+  let wk=null;if(rate&&goal.target){const r=Math.log(goal.target/w)/Math.log(1+rate/100);if(r>0)wk=Math.round(r)}
+  return {w,bmr:Math.round(bmr),lbm,fac,tdee,goal,n,ref:refWeight(w,o),wk,kgwk:rate/100*w};
+}
+function vWizard(){
+  if(!wz){view=null;return vHoje()}
+  const a=wz.a,st=wz.step,T=["Sobre você","Sua rotina","Seu objetivo","Estilo da dieta","Seu plano"];let b="";
+  if(st===0)b=`<p class="sec small" style="margin-top:0">Esses dados entram na fórmula do seu gasto calórico.</p><div class="field"><label>Sexo</label><div class="f2">${[["m","Masculino"],["f","Feminino"]].map(o=>`<button class="opt" data-act="wzopt" data-k="sex" data-v="${o[0]}" aria-pressed="${a.sex===o[0]}"><b>${o[1]}</b></button>`).join("")}</div></div>
+    <div class="f2">${wzIn("age","Idade","anos")}${wzIn("height","Altura (cm)","175")}</div><div class="f2">${wzIn("w","Peso atual (kg)","80")}${wzIn("bf","Gordura corporal (%)","opcional")}</div><p class="muted tiny" style="margin:0">Se você souber o percentual de gordura (bioimpedância, dobras), o cálculo usa sua massa magra e fica mais preciso. Se não souber, deixe em branco.</p>`;
+  else if(st===1)b=`<div class="field"><label>Como é o seu dia fora dos treinos?</label>${wzOpts("daily",WZ_DAILY)}</div><div class="f2">${wzIn("str","Treinos de força por semana","0 a 14")}${wzIn("car","Sessões de cardio por semana","0 a 14")}</div><p class="muted tiny" style="margin:0">Conte cada sessão. Quem treina duas vezes por dia nos dias úteis soma 10.</p>`;
+  else if(st===2){const w=wzN("w"),rt=WZ_RATE[a.type];b=`<div class="field"><label>O que você quer?</label><div class="f3">${[["perder","Perder"],["manter","Manter"],["ganhar","Ganhar"]].map(o=>`<button class="opt" style="text-align:center;padding:11px 4px" data-act="wzopt" data-k="type" data-v="${o[0]}" aria-pressed="${a.type===o[0]}"><b>${o[1]}</b></button>`).join("")}</div></div>
+    ${a.type==="manter"?`<p class="sec small">Vou calcular as calorias para manter seus ${nf(w,1)} kg.</p>`:`${wzIn("target","Peso alvo (kg)",a.type==="perder"?"menor que "+nf(w,1):"maior que "+nf(w,1))}<div class="field"><label>Em que ritmo?</label>${wzOpts("rate",rt.map(r=>[r[0],`${r[1]} · ${nf(r[0]/100*w,2)} kg por semana`,r[2]]))}</div>`}`}
+  else if(st===3)b=`<div class="field"><label>Como você prefere comer?</label>${wzOpts("style",WZ_STYLE)}</div><div class="field"><label>Quanta proteína?</label>${wzOpts("prot",WZ_PROT)}</div>`;
+  else{const c=wzCalc(),n=c.n,d=n.kcal-c.tdee,pk=n.p*4,ck=n.c*4,fk=n.f*9,tot=pk+ck+fk||1,row=(l,g,k,col)=>`<tr><td><span class="dot" style="background:${col}"></span>${l}</td><td class="r"><b>${nf(g)} g</b></td><td class="r">${nf(k)} kcal</td><td class="r">${nf(k/tot*100)}%</td></tr>`;
+    b=`<div style="text-align:center"><div class="tiny muted">Coma por dia</div><div class="big num" style="font-size:44px">${nf(n.kcal)}<small>kcal</small></div></div>
+    <div class="bar" style="height:10px;display:flex;margin:14px 0 6px"><span style="width:${pk/tot*100}%;background:var(--prot);border-radius:4px 0 0 4px"></span><span style="width:${ck/tot*100}%;background:var(--carb);border-radius:0"></span><span style="width:${fk/tot*100}%;background:var(--fat);border-radius:0 4px 4px 0"></span></div>
+    <table class="t num"><tbody>${row("Proteína",n.p,pk,"var(--prot)")}${row("Carboidrato",n.c,ck,"var(--carb)")}${row("Gordura",n.f,fk,"var(--fat)")}</tbody></table>
+    <p class="sec small">${a.type==="manter"?"Calorias de manutenção.":`${d<0?"Déficit":"Superávit"} de ${nf(Math.abs(d))} kcal por dia, para ${d<0?"perder":"ganhar"} cerca de ${nf(Math.abs(n.lim?d*7/7700:c.kgwk),2)} kg por semana.`}${c.wk&&!n.lim?` Previsão de chegar a ${nf(c.goal.target,1)} kg: ${dmy(addDays(today(),c.wk*7))} de ${D8(addDays(today(),c.wk*7)).getFullYear()} (${c.wk} semanas).`:""}</p>
+    ${n.lim?`<p class="small"><span class="pill warn">piso de segurança</span> O ritmo escolhido pediria menos calorias do que o mínimo que o app aceita (60% do gasto, nunca abaixo de ${a.sex==="f"?"1.200":"1.500"} kcal). Fiquei no mínimo, então a perda real será um pouco mais lenta que a escolhida.</p>`:""}
+    <div class="card" style="background:var(--raised);margin-top:10px"><h3>Como cheguei nisso</h3><table class="t num" style="margin-top:6px"><tbody>
+      <tr><td>Metabolismo basal</td><td class="r"><b>${nf(c.bmr)}</b> kcal</td></tr><tr><td class="muted tiny" colspan="2" style="border-top:0;padding-top:0">${c.lbm?`Katch-McArdle, com ${nf(c.lbm,1)} kg de massa magra`:"Mifflin-St Jeor, por peso, altura, idade e sexo"}</td></tr>
+      <tr><td>Fator de atividade</td><td class="r"><b>× ${nf(c.fac,2)}</b></td></tr><tr><td>Gasto diário estimado</td><td class="r"><b>${nf(c.tdee)}</b> kcal</td></tr>
+      <tr><td>Proteína</td><td class="r"><b>${nf(+a.prot,1)}</b> g × ${nf(c.ref,1)} kg</td></tr></tbody></table>
+      <p class="muted tiny" style="margin:8px 0 0">${c.ref<c.w-0.5?`A proteína usa um peso de referência de ${nf(c.ref,1)} kg, e não o peso total, para não superestimar a necessidade de quem tem mais gordura corporal. `:""}Fibras: mire em cerca de ${nf(n.kcal/1000*14)} g por dia.</p></div>
+    <p class="muted tiny">Isso é um ponto de partida calculado por fórmulas. Depois de 2 a 3 semanas registrando comida e peso, o check-in semanal corrige o gasto com os seus dados reais. Não substitui nutricionista ou médico.</p>`}
+  return `<div class="row between" style="margin-bottom:14px"><button class="icon-btn" data-act="wzback" aria-label="Voltar">‹</button><div style="text-align:center"><div class="tiny muted">Passo ${st+1} de 5</div><h2>${T[st]}</h2></div><span style="width:42px"></span></div>
+  <div class="bar" style="margin-bottom:14px"><span style="width:${(st+1)/5*100}%;background:var(--ink)"></span></div>
+  <div class="card">${b}</div><button class="btn primary block" style="margin-top:14px" data-act="${st===4?"wzapply":"wznext"}">${st===4?"Usar este plano":"Continuar"}</button>`;
+}
+function wzCheck(){
+  const a=wz.a,st=wz.step,w=wzN("w"),h=wzN("height"),age=wzN("age"),bf=wzN("bf"),t=wzN("target");
+  if(st===0){if(!age||!h||!w)return "Preencha idade, altura e peso.";if(age<18)return "O app só monta dieta para maiores de 18 anos. Antes disso, procure um nutricionista ou médico.";if(age>95||h<130||h>230||w<35||w>300)return "Confira idade, altura (em cm) e peso (em kg).";if(a.bf!==""&&a.bf!=null&&(bf==null||bf<4||bf>60))return "O percentual de gordura deve ficar entre 4 e 60, ou em branco."}
+  if(st===1){const s=wzN("str")||0,c=wzN("car")||0;if(s<0||s>14||c<0||c>14)return "Use de 0 a 14 sessões por semana."}
+  if(st===2&&a.type!=="manter"){const bmi=x=>x/(h/100)**2;if(!t)return "Informe o peso alvo.";if(a.type==="perder"){if(t>=w)return "Para perder peso, o alvo precisa ser menor que o peso atual.";if(bmi(t)<18.5)return "Esse peso alvo fica abaixo do saudável para a sua altura (IMC menor que 18,5). O mínimo aqui é "+nf(Math.ceil(18.5*(h/100)**2*10)/10,1)+" kg."}
+    if(a.type==="ganhar"&&t<=w)return "Para ganhar peso, o alvo precisa ser maior que o peso atual.";if(!WZ_RATE[a.type].some(r=>String(r[0])===String(a.rate)))return "Escolha o ritmo."}
+  return null;
+}
+Object.assign(ACT,{
+  editgoal:wzStart,
+  wzopt(el){wzKeep();const k=el.dataset.k;wz.a[k]=el.dataset.v;if(k==="type"&&wz.a.type!=="manter"&&!WZ_RATE[wz.a.type].some(r=>String(r[0])===String(wz.a.rate)))wz.a.rate=WZ_RATE[wz.a.type][1][0];render()},
+  wznext(){wzKeep();const e=wzCheck();if(e){toast(e);return}wz.step++;render();window.scrollTo(0,0)},
+  wzback(){wzKeep();if(wz.step===0){wz=null;back();return}wz.step--;render();window.scrollTo(0,0)},
+  wzapply(){const c=wzCalc(),a=wz.a,t=today(),bf=wzN("bf"),old=S.diet.prog;
+    Object.assign(S.settings,{sex:a.sex,age:wzN("age"),height:wzN("height"),activity:r1(c.fac*100)/100});
+    S.body.w=S.body.w.filter(x=>x.d!==t).concat({d:t,kg:c.w});if(bf)S.body.bf=S.body.bf.filter(x=>x.d!==t).concat({d:t,v:bf});
+    S.diet.goal={type:a.type,target:c.goal.target,rate:c.goal.rate,start:t,startW:c.w};
+    if(old.start===t)S.diet.hist=S.diet.hist.filter(x=>x.start!==t);else if(!String(old.src||"").startsWith("valores provisórios"))S.diet.hist.push({...old});
+    S.diet.prog={start:t,kcal:c.n.kcal,p:c.n.p,c:c.n.c,f:c.n.f,style:a.style,pkg:+a.prot,tdee:c.tdee,src:"calculado pelas suas respostas",lim:!!c.n.lim};S.diet.lastCheckin=t;
+    wz=null;stack=[];view=null;sub.dieta="plano";save();location.hash="dieta";onRoute();toast("Plano criado.")}
+});
 (function boot(){
   const local=readLocal();if(local){try{fromDocs(local)}catch(e){}}
   onRoute();setInterval(tick,1000);
